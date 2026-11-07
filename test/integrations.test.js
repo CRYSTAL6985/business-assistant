@@ -253,3 +253,17 @@ test('outbound webhooks are signed; conversation.waiting is sent once per wait',
   assert.equal(JSON.parse(body).data.conversationId, chat.conversationId);
   assert.match(app.db.prepare('SELECT last_status FROM webhooks').get().last_status, /200/);
 });
+
+test('attention center lists a broken WooCommerce connection and a widget that was never seen', async (t) => {
+  const woo = await fakeWoo(t, { failOrders: true });
+  const app = await startApp(t);
+  const { call, storeId } = await proStore(app, 'att-shop');
+  app.db.prepare("UPDATE stores SET created_at = datetime('now', '-2 days') WHERE id = ?").run(storeId);
+  let ids = (await call('GET', '/api/app/me')).body.attention.map((a) => a.id);
+  assert.ok(ids.includes(`widget-${storeId}`));
+  await call('POST', `/api/app/integrations/${storeId}/woocommerce`, { siteUrl: woo.url, consumerKey: KEY, consumerSecret: SECRET });
+  await app.services.queue.run(storeId);
+  ids = (await call('GET', '/api/app/me')).body.attention.map((a) => a.id);
+  assert.ok(ids.includes(`woo-error-${storeId}`));
+  assert.ok(!ids.includes(`widget-${storeId}`), 'a WooCommerce store is not a widget-only store');
+});

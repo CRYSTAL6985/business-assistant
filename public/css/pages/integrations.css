@@ -1,0 +1,18 @@
+/* Integrations: one column of sections, status rows that wrap on phones. */
+.int-grid { display: grid; gap: var(--s-4); max-width: 880px; }
+.int-grid > *, .int-grid .cfg-section > * { min-width: 0; } /* long code lines scroll inside their box, not the page */
+.int-locked { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; border: 1px solid var(--accent-soft); }
+.int-locked > div { flex: 1; min-width: 200px; }
+.int-locked p { margin: 2px 0 0; }
+.int-status { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.run-list { margin-top: calc(var(--s-1) * -1); }
+.run-row { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; padding: var(--s-2) 0; border-bottom: 1px solid var(--sep); min-width: 0; }
+.run-row:last-child { border-bottom: 0; }
+.run-row .ltr { overflow-wrap: anywhere; min-width: 0; }
+.run-row .btn { margin-inline-start: auto; }
+.run-error { flex-basis: 100%; }
+.danger-text { color: var(--danger); }
+.int-docs summary { cursor: pointer; font-weight: 600; width: fit-content; }
+.int-docs[open] { display: grid; gap: var(--s-2); }
+.int-docs code { font-size: var(--t-xs); overflow-wrap: anywhere; }
+.code-block { margin: 0; padding: var(--s-3); border-radius: var(--r); background: var(--fill); font-size: var(--t-xs); line-height: 1.7; overflow-x: auto; white-space: pre; text-align: left; }

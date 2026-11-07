@@ -7,12 +7,12 @@ import { toggleMenu, menuItem, menuSep } from '../menu.js';
 const PLATFORM = { widget: 'فقط ویجت', woocommerce: 'WooCommerce', custom: 'API اختصاصی' };
 const fa = (n) => Number(n).toLocaleString('fa-IR');
 
-function snippetFor(store) {
+export function snippetFor(store) {
   return `<script src="${location.origin}/widget.js" data-business="${store.slug}" defer></script>`;
 }
 
 /** Where the widget was really seen loading — the only proof it is installed. */
-function installState(store) {
+export function installState(store) {
   if (!store.sightings.length) {
     return el('p', { class: 'subtle small' }, icon('alert', 'icon icon-sm'), ' ویجت هنوز روی هیچ سایتی دیده نشده.',
       store.domain ? '' : ' دامنه را ثبت کنید تا ویجت فقط روی سایت خودتان کار کند.');
@@ -23,7 +23,7 @@ function installState(store) {
       el('span', { class: 'subtle', text: ` آخرین بار ${faDate(x.lastSeenAt)}` })))));
 }
 
-async function copy(text) {
+export async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast('کپی شد'); } catch { toast('کپی نشد؛ متن را دستی انتخاب کنید', 'alert'); }
 }
 
