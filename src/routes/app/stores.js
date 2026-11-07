@@ -19,7 +19,8 @@ function storeRoutes(db) {
   router.get('/', (req, res) => {
     const items = db.prepare(`SELECT id, name, slug, domain, platform, created_at AS createdAt, disconnected_at AS disconnectedAt
       FROM stores WHERE workspace_id = ? ORDER BY disconnected_at IS NOT NULL, id`).all(req.workspaceId);
-    res.json({ items, ...storeAllowance(db, workspaceOf(req)) });
+    const sightings = db.prepare('SELECT origin, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt, hits FROM widget_sightings WHERE store_id = ? ORDER BY last_seen_at DESC');
+    res.json({ items: items.map((s) => ({ ...s, sightings: sightings.all(s.id) })), ...storeAllowance(db, workspaceOf(req)) });
   });
 
   router.post('/', (req, res, next) => {

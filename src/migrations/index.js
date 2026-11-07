@@ -5,6 +5,7 @@ const MIGRATIONS = [
   require('./002-workspaces'),
   require('./003-events'),
   require('./004-sync-columns'),
+  require('./005-inbox'),
 ];
 
 /**

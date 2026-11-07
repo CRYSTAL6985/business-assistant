@@ -8,6 +8,8 @@ const { chatRoutes } = require('./routes/chat');
 const { panelRoutes } = require('./routes/panel');
 const { accountRoutes } = require('./routes/account');
 const { appRoutes } = require('./routes/app');
+const { findStore } = require('./routes/chat');
+const { frameAncestors } = require('./origins');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const DEFAULT_PORT = 3000;
@@ -34,7 +36,12 @@ function createApp({ db, ask }) {
   app.use('/api/app', appRoutes(db));
   app.use('/api/chat', chatRoutes(db, ask));
 
-  app.get('/chat/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
+  app.get('/chat/:slug', (req, res) => {
+    const store = findStore(db, String(req.params.slug));
+    // Embeddable only on the store's own site (any site while the store has no domain set).
+    res.set('Content-Security-Policy', store ? frameAncestors(store) : "frame-ancestors 'self'");
+    res.sendFile(path.join(PUBLIC_DIR, 'chat.html'));
+  });
   app.get('/panel', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'panel.html')));
   app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'app.html')));
   app.use(express.static(PUBLIC_DIR));
