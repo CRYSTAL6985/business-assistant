@@ -119,10 +119,10 @@ test('the bot stops answering once the monthly plan limit is used up', async (t)
   const { db, server, base } = await startServer(async () => 'سلام!');
   t.after(() => server.close());
   await registerShop(base, 'busy-shop');
-  const { id } = db.prepare("SELECT id FROM businesses WHERE slug = 'busy-shop'").get();
-  db.prepare("INSERT INTO conversations (id, business_id) VALUES ('c1', ?)").run(id);
+  const { id } = db.prepare("SELECT id FROM stores WHERE slug = 'busy-shop'").get();
+  db.prepare("INSERT INTO conversations (id, store_id) VALUES ('c1', ?)").run(id);
   const insert = db.prepare("INSERT INTO messages (conversation_id, role, content, source) VALUES ('c1', 'assistant', 'x', 'ai')");
-  for (let i = 0; i < PLAN_LIMITS.free; i++) insert.run();
+  for (let i = 0; i < PLAN_LIMITS.free.replies; i++) insert.run();
 
   const res = await client(base)('POST', '/api/chat/busy-shop', { message: 'سلام' });
   assert.equal(res.body.source, 'limit');
@@ -159,4 +159,23 @@ test('panel overview counts new orders and this month\'s conversations', async (
   await client(base)('POST', '/api/chat/stats-shop', { message: 'سلام' });
   const panel = await owner('GET', '/api/panel');
   assert.deepEqual(panel.body.stats, { newOrders: 0, conversationsThisMonth: 1 });
+});
+
+test('pre-migration session cookie gets a clean 401', async (t) => {
+  const { server, base } = await startServer(null);
+  t.after(() => server.close());
+  const res = await fetch(`${base}/api/panel`, { headers: { cookie: 'sid=deadbeef' } });
+  assert.equal(res.status, 401);
+  assert.equal((await res.json()).error, 'ابتدا وارد شوید');
+});
+
+test('duplicate slug or email returns 409', async (t) => {
+  const { server, base } = await startServer(null);
+  t.after(() => server.close());
+  await registerShop(base, 'dupe-shop');
+  const call = client(base);
+  const sameSlug = await call('POST', '/api/auth/register', { name: 'Dupe Two', slug: 'dupe-shop', email: 'new@test.ir', password: 'password123' });
+  assert.equal(sameSlug.status, 409);
+  const sameEmail = await call('POST', '/api/auth/register', { name: 'Fresh Shop', slug: 'fresh-shop', email: 'dupe-shop@test.ir', password: 'password123' });
+  assert.equal(sameEmail.status, 409);
 });

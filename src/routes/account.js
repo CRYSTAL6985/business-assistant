@@ -1,9 +1,37 @@
-// Sign-up, login and logout for business owners.
+// Sign-up, login and logout for shop owners. Signing up creates the user, their workspace and its first store.
 const express = require('express');
 const auth = require('../auth');
 const validate = require('../validate');
 
 const MIN_PASSWORD = 8;
+const DEFAULT_TONE = 'دوستانه و محترمانه';
+
+/**
+ * Creates user + workspace + owner membership + first store + assistant config in one transaction.
+ * @returns {{ userId: number, workspaceId: number, storeId: number }}
+ */
+function createAccount(db, { name, slug, email, passwordHash, description = '', tone = DEFAULT_TONE, plan = 'free' }) {
+  const config = JSON.stringify({ description, tone });
+  db.exec('BEGIN');
+  try {
+    const userId = Number(db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)').run(email, passwordHash, name).lastInsertRowid);
+    const workspaceId = Number(db.prepare('INSERT INTO workspaces (name, plan) VALUES (?, ?)').run(name, plan).lastInsertRowid);
+    db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").run(workspaceId, userId);
+    const storeId = Number(db.prepare('INSERT INTO stores (workspace_id, slug, name) VALUES (?, ?, ?)').run(workspaceId, slug, name).lastInsertRowid);
+    db.prepare("INSERT INTO assistant_configs (store_id, draft_json, published_json, published_at) VALUES (?, ?, ?, datetime('now'))")
+      .run(storeId, config, config);
+    db.exec('COMMIT');
+    return { userId, workspaceId, storeId };
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+/** The workspace a user lands in after login: the first one they belong to. */
+function firstWorkspaceId(db, userId) {
+  return db.prepare('SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY workspace_id LIMIT 1').get(userId)?.workspace_id;
+}
 
 function accountRoutes(db) {
   const router = express.Router();
@@ -20,13 +48,12 @@ function accountRoutes(db) {
       if (!email) return res.status(400).json({ error: 'ایمیل معتبر نیست' });
       if (!password) return res.status(400).json({ error: `رمز عبور حداقل ${MIN_PASSWORD} حرف` });
 
-      const taken = db.prepare('SELECT 1 FROM businesses WHERE slug = ? OR email = ?').get(slug, email);
+      const taken = db.prepare('SELECT 1 FROM users WHERE email = ? UNION ALL SELECT 1 FROM stores WHERE slug = ?').get(email, slug);
       if (taken) return res.status(409).json({ error: 'این ایمیل یا آدرس صفحه قبلاً ثبت شده' });
 
-      const hash = await auth.hashPassword(password);
-      const info = db.prepare('INSERT INTO businesses (slug, name, email, password_hash) VALUES (?, ?, ?, ?)')
-        .run(slug, name, email, hash);
-      auth.setSessionCookie(res, auth.createSession(db, Number(info.lastInsertRowid)));
+      const passwordHash = await auth.hashPassword(password);
+      const { userId, workspaceId } = createAccount(db, { name, slug, email, passwordHash });
+      auth.setSessionCookie(res, auth.createSession(db, userId, workspaceId));
       res.status(201).json({ ok: true });
     } catch (err) {
       next(err);
@@ -40,14 +67,16 @@ function accountRoutes(db) {
       if (!email) return res.status(400).json({ error: 'ایمیل معتبر نیست' });
       if (limiter.isLocked(email)) return res.status(429).json({ error: 'تلاش‌های ناموفق زیاد بود. ۱۵ دقیقه دیگر امتحان کنید.' });
 
-      const row = db.prepare('SELECT id, password_hash FROM businesses WHERE email = ?').get(email);
+      const row = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email);
       const ok = row ? await auth.verifyPassword(password, row.password_hash) : false;
       if (!ok) {
         limiter.fail(email);
         return res.status(401).json({ error: 'ایمیل یا رمز عبور اشتباه است' }); // same message either way: don't reveal which emails exist
       }
       limiter.succeed(email);
-      auth.setSessionCookie(res, auth.createSession(db, row.id));
+      const workspaceId = firstWorkspaceId(db, row.id);
+      if (!workspaceId) return res.status(403).json({ error: 'این حساب به هیچ فضای کاری متصل نیست' });
+      auth.setSessionCookie(res, auth.createSession(db, row.id, workspaceId));
       res.json({ ok: true });
     } catch (err) {
       next(err);
@@ -64,4 +93,4 @@ function accountRoutes(db) {
   return router;
 }
 
-module.exports = { accountRoutes };
+module.exports = { accountRoutes, createAccount };

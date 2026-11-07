@@ -1,8 +1,9 @@
 // Creates the demo business (ABRISHAM boutique) with its real product list.
-// Run: npm run seed   — re-running deletes and recreates the demo business.
+// Run: npm run seed   — re-running deletes and recreates the demo account (user, workspace, store).
 const crypto = require('node:crypto');
 const { openDb } = require('./db');
 const { hashPassword } = require('./auth');
+const { createAccount } = require('./routes/account');
 
 const DEMO = {
   slug: 'abrisham',
@@ -35,18 +36,19 @@ const FAQS = [
 ];
 
 async function seed(db, password) {
-  db.prepare('DELETE FROM businesses WHERE slug = ?').run(DEMO.slug); // cascades to products, faqs, orders…
-  const hash = await hashPassword(password);
-  const { lastInsertRowid } = db.prepare(`
-    INSERT INTO businesses (slug, name, email, description, tone, plan, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(DEMO.slug, DEMO.name, DEMO.email, DEMO.description, DEMO.tone, DEMO.plan, hash);
-  const businessId = Number(lastInsertRowid);
+  // Deleting the workspace cascades to its stores, products, faqs, orders and conversations.
+  const old = db.prepare('SELECT workspace_id FROM stores WHERE slug = ?').get(DEMO.slug);
+  if (old) db.prepare('DELETE FROM workspaces WHERE id = ?').run(old.workspace_id);
+  db.prepare('DELETE FROM users WHERE email = ?').run(DEMO.email);
 
-  const addProduct = db.prepare('INSERT INTO products (business_id, name, description, price) VALUES (?, ?, ?, ?)');
-  for (const [name, description, price] of PRODUCTS) addProduct.run(businessId, name, description, price);
-  const addFaq = db.prepare('INSERT INTO faqs (business_id, question, answer) VALUES (?, ?, ?)');
-  for (const [question, answer] of FAQS) addFaq.run(businessId, question, answer);
-  return businessId;
+  const passwordHash = await hashPassword(password);
+  const { storeId } = createAccount(db, { ...DEMO, passwordHash });
+
+  const addProduct = db.prepare('INSERT INTO products (store_id, name, description, price) VALUES (?, ?, ?, ?)');
+  for (const [name, description, price] of PRODUCTS) addProduct.run(storeId, name, description, price);
+  const addFaq = db.prepare('INSERT INTO faqs (store_id, question, answer) VALUES (?, ?, ?)');
+  for (const [question, answer] of FAQS) addFaq.run(storeId, question, answer);
+  return storeId;
 }
 
 if (require.main === module) {

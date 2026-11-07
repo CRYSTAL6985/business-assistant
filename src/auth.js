@@ -1,4 +1,4 @@
-// Business-owner accounts: password hashing, login sessions, brute-force lockout.
+// Owner accounts: password hashing, login sessions (user + active workspace), brute-force lockout.
 const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 
@@ -24,10 +24,10 @@ async function verifyPassword(password, stored) {
   return crypto.timingSafeEqual(expected, actual); // constant time: no timing leak
 }
 
-function createSession(db, businessId) {
+function createSession(db, userId, workspaceId) {
   const token = crypto.randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO sessions (token, business_id, expires_at) VALUES (?, ?, ?)')
-    .run(token, businessId, Date.now() + SESSION_MS);
+  db.prepare('INSERT INTO sessions (token, user_id, active_workspace_id, expires_at) VALUES (?, ?, ?, ?)')
+    .run(token, userId, workspaceId, Date.now() + SESSION_MS);
   return token;
 }
 
@@ -46,16 +46,17 @@ function setSessionCookie(res, token) {
   res.cookie(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', maxAge: SESSION_MS });
 }
 
-/** Express middleware: rejects the request unless it carries a valid session; sets req.businessId. */
-function requireAuth(db) {
+/** Express middleware: rejects the request unless it carries a valid session; sets req.userId and req.workspaceId. */
+function requireUser(db) {
   return (req, res, next) => {
     const token = readCookie(req, SESSION_COOKIE);
-    const row = token && db.prepare('SELECT business_id, expires_at FROM sessions WHERE token = ?').get(token);
+    const row = token && db.prepare('SELECT user_id, active_workspace_id, expires_at FROM sessions WHERE token = ?').get(token);
     if (!row || row.expires_at < Date.now()) {
       if (row) deleteSession(db, token);
       return res.status(401).json({ error: 'ابتدا وارد شوید' });
     }
-    req.businessId = row.business_id;
+    req.userId = row.user_id;
+    req.workspaceId = row.active_workspace_id;
     req.sessionToken = token;
     next();
   };
@@ -92,6 +93,6 @@ module.exports = {
   deleteSession,
   readCookie,
   setSessionCookie,
-  requireAuth,
+  requireUser,
   createLoginLimiter,
 };

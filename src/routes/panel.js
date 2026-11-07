@@ -1,8 +1,10 @@
-// Business-owner dashboard API. Every route requires login, and every query is filtered by
-// req.businessId — an owner can only ever read or change their own business's rows.
+// Owner dashboard API for one store. Every route requires login; the store comes from scope.storeFor()
+// (?store=<id>, default: the workspace's first store) and every query is filtered by req.store.id —
+// an owner can only ever read or change rows of stores in their own workspace.
 const express = require('express');
-const { requireAuth } = require('../auth');
-const { usageFor } = require('../plans');
+const { requireUser } = require('../auth');
+const { usageFor, effectivePlan } = require('../plans');
+const { storeFor } = require('../scope');
 const validate = require('../validate');
 
 const ORDER_STATUSES = ['new', 'confirmed', 'sent', 'cancelled'];
@@ -30,19 +32,31 @@ function oneRow(res, info) {
 
 function panelRoutes(db) {
   const router = express.Router();
-  router.use(requireAuth(db));
+  router.use(requireUser(db));
+  router.use((req, res, next) => {
+    req.store = storeFor(db, req, validate.id(req.query.store) ?? undefined);
+    if (!req.store) return res.status(404).json({ error: 'فروشگاه پیدا نشد' });
+    next();
+  });
 
   router.get('/', (req, res) => {
-    const business = db.prepare('SELECT id, slug, name, description, tone, email, plan FROM businesses WHERE id = ?').get(req.businessId);
-    const products = db.prepare('SELECT id, name, description, price, in_stock FROM products WHERE business_id = ? ORDER BY id').all(req.businessId);
-    const faqs = db.prepare('SELECT id, question, answer FROM faqs WHERE business_id = ? ORDER BY id').all(req.businessId);
+    const storeId = req.store.id;
+    const workspace = db.prepare('SELECT id, plan, paid_until FROM workspaces WHERE id = ?').get(req.workspaceId);
+    const { email } = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId);
+    const config = JSON.parse(db.prepare('SELECT published_json FROM assistant_configs WHERE store_id = ?').get(storeId)?.published_json ?? '{}');
+    const business = {
+      id: storeId, slug: req.store.slug, name: req.store.name,
+      description: config.description ?? '', tone: config.tone ?? '', email, plan: effectivePlan(workspace),
+    };
+    const products = db.prepare('SELECT id, name, description, price, in_stock FROM products WHERE store_id = ? ORDER BY id').all(storeId);
+    const faqs = db.prepare('SELECT id, question, answer FROM faqs WHERE store_id = ? ORDER BY id').all(storeId);
     const stats = db.prepare(`
       SELECT
-        (SELECT COUNT(*) FROM orders WHERE business_id = ? AND status = 'new') AS newOrders,
-        (SELECT COUNT(*) FROM conversations WHERE business_id = ?
+        (SELECT COUNT(*) FROM orders WHERE store_id = ? AND status = 'new') AS newOrders,
+        (SELECT COUNT(*) FROM conversations WHERE store_id = ?
            AND created_at >= strftime('%Y-%m-01 00:00:00', 'now')) AS conversationsThisMonth
-    `).get(req.businessId, req.businessId);
-    res.json({ business, products, faqs, stats, usage: usageFor(db, business) });
+    `).get(storeId, storeId);
+    res.json({ business, products, faqs, stats, usage: usageFor(db, workspace) });
   });
 
   router.put('/business', (req, res) => {
@@ -50,15 +64,19 @@ function panelRoutes(db) {
     const description = validate.text(req.body?.description ?? '', 0, 1500);
     const tone = validate.text(req.body?.tone, 2, 100);
     if (name === null || description === null || tone === null) return res.status(400).json({ error: 'اطلاعات نامعتبر است' });
-    db.prepare('UPDATE businesses SET name = ?, description = ?, tone = ? WHERE id = ?').run(name, description, tone, req.businessId);
+    // Draft and published stay identical until the assistant editor (with its publish step) exists.
+    const config = JSON.stringify({ description, tone });
+    db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
+    db.prepare("UPDATE assistant_configs SET draft_json = ?, published_json = ?, published_at = datetime('now') WHERE store_id = ?")
+      .run(config, config, req.store.id);
     res.json({ ok: true });
   });
 
   router.post('/products', (req, res) => {
     const p = productInput(req.body);
     if (!p) return res.status(400).json({ error: 'نام و قیمت (عدد صحیح) لازم است' });
-    const info = db.prepare('INSERT INTO products (business_id, name, description, price, in_stock) VALUES (?, ?, ?, ?, ?)')
-      .run(req.businessId, p.name, p.description, p.price, p.inStock);
+    const info = db.prepare('INSERT INTO products (store_id, name, description, price, in_stock) VALUES (?, ?, ?, ?, ?)')
+      .run(req.store.id, p.name, p.description, p.price, p.inStock);
     res.status(201).json({ id: Number(info.lastInsertRowid) });
   });
 
@@ -66,18 +84,18 @@ function panelRoutes(db) {
     const id = validate.id(req.params.id);
     const p = productInput(req.body);
     if (!id || !p) return res.status(400).json({ error: 'نام و قیمت (عدد صحیح) لازم است' });
-    oneRow(res, db.prepare('UPDATE products SET name = ?, description = ?, price = ?, in_stock = ? WHERE id = ? AND business_id = ?')
-      .run(p.name, p.description, p.price, p.inStock, id, req.businessId));
+    oneRow(res, db.prepare('UPDATE products SET name = ?, description = ?, price = ?, in_stock = ? WHERE id = ? AND store_id = ?')
+      .run(p.name, p.description, p.price, p.inStock, id, req.store.id));
   });
 
   router.delete('/products/:id', (req, res) => {
-    oneRow(res, db.prepare('DELETE FROM products WHERE id = ? AND business_id = ?').run(validate.id(req.params.id), req.businessId));
+    oneRow(res, db.prepare('DELETE FROM products WHERE id = ? AND store_id = ?').run(validate.id(req.params.id), req.store.id));
   });
 
   router.post('/faqs', (req, res) => {
     const f = faqInput(req.body);
     if (!f) return res.status(400).json({ error: 'سؤال و پاسخ لازم است' });
-    const info = db.prepare('INSERT INTO faqs (business_id, question, answer) VALUES (?, ?, ?)').run(req.businessId, f.question, f.answer);
+    const info = db.prepare('INSERT INTO faqs (store_id, question, answer) VALUES (?, ?, ?)').run(req.store.id, f.question, f.answer);
     res.status(201).json({ id: Number(info.lastInsertRowid) });
   });
 
@@ -85,16 +103,16 @@ function panelRoutes(db) {
     const id = validate.id(req.params.id);
     const f = faqInput(req.body);
     if (!id || !f) return res.status(400).json({ error: 'سؤال و پاسخ لازم است' });
-    oneRow(res, db.prepare('UPDATE faqs SET question = ?, answer = ? WHERE id = ? AND business_id = ?')
-      .run(f.question, f.answer, id, req.businessId));
+    oneRow(res, db.prepare('UPDATE faqs SET question = ?, answer = ? WHERE id = ? AND store_id = ?')
+      .run(f.question, f.answer, id, req.store.id));
   });
 
   router.delete('/faqs/:id', (req, res) => {
-    oneRow(res, db.prepare('DELETE FROM faqs WHERE id = ? AND business_id = ?').run(validate.id(req.params.id), req.businessId));
+    oneRow(res, db.prepare('DELETE FROM faqs WHERE id = ? AND store_id = ?').run(validate.id(req.params.id), req.store.id));
   });
 
   router.get('/orders', (req, res) => {
-    const rows = db.prepare('SELECT * FROM orders WHERE business_id = ? ORDER BY id DESC').all(req.businessId);
+    const rows = db.prepare('SELECT * FROM orders WHERE store_id = ? ORDER BY id DESC').all(req.store.id);
     res.json(rows.map(({ items_json: itemsJson, ...order }) => ({ ...order, items: JSON.parse(itemsJson) })));
   });
 
@@ -102,12 +120,12 @@ function panelRoutes(db) {
     const id = validate.id(req.params.id);
     const status = req.body?.status;
     if (!id || !ORDER_STATUSES.includes(status)) return res.status(400).json({ error: 'وضعیت نامعتبر است' });
-    oneRow(res, db.prepare('UPDATE orders SET status = ? WHERE id = ? AND business_id = ?').run(status, id, req.businessId));
+    oneRow(res, db.prepare('UPDATE orders SET status = ? WHERE id = ? AND store_id = ?').run(status, id, req.store.id));
   });
 
   router.get('/conversations', (req, res) => {
-    const conversations = db.prepare('SELECT id, created_at FROM conversations WHERE business_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?')
-      .all(req.businessId, RECENT_CONVERSATIONS);
+    const conversations = db.prepare('SELECT id, created_at FROM conversations WHERE store_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?')
+      .all(req.store.id, RECENT_CONVERSATIONS);
     const messagesOf = db.prepare('SELECT role, content, source, created_at FROM messages WHERE conversation_id = ? ORDER BY id');
     res.json(conversations.map((c) => ({ ...c, messages: messagesOf.all(c.id) })));
   });

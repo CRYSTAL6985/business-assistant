@@ -2,6 +2,7 @@
 // each inside its own transaction, so a failure leaves the database exactly as it was before that step.
 const MIGRATIONS = [
   require('./001-initial'),
+  require('./002-workspaces'),
 ];
 
 /**
