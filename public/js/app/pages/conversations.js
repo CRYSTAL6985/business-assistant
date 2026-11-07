@@ -2,6 +2,7 @@
 // reply as staff and keep internal notes. Polls while visible so new messages appear on their own.
 import { api, get } from '../api.js';
 import { pageHead } from '../table.js';
+import { explain } from '../explain.js';
 
 const THREAD_POLL_MS = 5000;
 const LIST_POLL_MS = 20000;
@@ -78,9 +79,10 @@ export async function render(main, { storeId, refreshMe }) {
     const context = m.context?.order
       ? el('div', { class: `msg-note ${m.context.order.ok ? 'ok' : 'bad'}`, text: m.context.order.ok ? `سفارش #${fa(m.context.order.orderId, { useGrouping: false })} پس از بررسی سرور ثبت شد` : `سفارش رد شد: ${m.context.order.error}` })
       : null;
+    const why = m.role === 'assistant' ? explain(m.context) : null;
     return el('div', { class: `ibx-msg from-${m.role}` },
       el('div', { class: 'ibx-meta' }, el('span', { text: who }), tag ? el('span', { class: `pill ${m.source === 'ai' ? 'pill-accent' : ''}`, text: tag }) : null, el('time', { text: shortTime(m.createdAt) })),
-      el('div', { class: 'ibx-bubble' }, bidiText(m.content)), context);
+      el('div', { class: 'ibx-bubble' }, bidiText(m.content)), context, why);
   }
 
   function threadView(c) {

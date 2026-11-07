@@ -9,8 +9,9 @@ import * as knowledge from './pages/knowledge.js';
 import * as orders from './pages/orders.js';
 import * as stores from './pages/stores.js';
 import * as conversations from './pages/conversations.js';
+import * as assistant from './pages/assistant.js';
 
-const PAGES = { overview, products, knowledge, orders, stores, conversations };
+const PAGES = { overview, products, knowledge, orders, stores, conversations, assistant };
 const main = document.getElementById('main');
 let me = null;
 
