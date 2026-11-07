@@ -2,9 +2,6 @@
 // in the classic panel today, it links there instead of pretending.
 const CLASSIC = {
   conversations: { tab: 'conversations', note: 'گفتگوهای مشتریان را فعلاً در پنل قدیمی ببینید.' },
-  orders: { tab: 'orders', note: 'سفارش‌ها و تغییر وضعیت آن‌ها فعلاً در پنل قدیمی است.' },
-  products: { tab: 'products', note: 'افزودن و ویرایش محصولات فعلاً در پنل قدیمی است.' },
-  knowledge: { tab: 'faqs', note: 'سؤالات متداول فعلاً در پنل قدیمی ویرایش می‌شوند.' },
   assistant: { tab: 'overview', note: 'توضیحات کسب‌وکار و لحن دستیار فعلاً در پنل قدیمی تنظیم می‌شود.' },
   settings: { tab: 'overview', note: 'نام کسب‌وکار فعلاً در پنل قدیمی تغییر می‌کند.' },
 };

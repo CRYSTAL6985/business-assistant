@@ -4,8 +4,12 @@ import { currentRoute, onRoute } from './router.js';
 import { renderShell, SECTION_LABELS } from './shell.js';
 import * as overview from './pages/overview.js';
 import * as later from './pages/later.js';
+import * as products from './pages/products.js';
+import * as knowledge from './pages/knowledge.js';
+import * as orders from './pages/orders.js';
+import * as stores from './pages/stores.js';
 
-const PAGES = { overview };
+const PAGES = { overview, products, knowledge, orders, stores };
 const main = document.getElementById('main');
 let me = null;
 
