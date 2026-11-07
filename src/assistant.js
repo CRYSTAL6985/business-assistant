@@ -57,30 +57,48 @@ function normalizePhone(raw) {
   return /^09\d{9}$/.test(withZero) ? withZero : null;
 }
 
-function buildSystemPrompt(business, products, faqs) {
+const LANGUAGE_RULES = {
+  fa: '- Reply in Persian.',
+  'fa,en': '- Reply in the language the customer writes in (Persian or English).',
+};
+
+/**
+ * @param {{ name: string, description?: string, tone?: string, assistantName?: string, instructions?: string,
+ *           policies?: string, languages?: string[], orderTaking?: boolean }} profile  the store's published config
+ */
+function buildSystemPrompt(profile, products, faqs) {
   const productLines = products.length
     ? products.map((p) =>
         `#${p.id} | ${p.name} | ${formatToman(p.price)} | ${p.in_stock ? 'موجود' : 'ناموجود'} | ${p.description}`)
     : ['(هنوز محصولی ثبت نشده)'];
   const faqLines = faqs.length ? faqs.map((f) => `س: ${f.question}\nج: ${f.answer}`) : ['(سؤال متداولی ثبت نشده)'];
+  const languages = (profile.languages ?? ['fa', 'en']).join(',');
+  const ordering = profile.orderTaking === false
+    ? ['ORDERS', '- Do not take orders in this chat. If the customer wants to buy, tell them to order on the website or contact the shop.']
+    : [
+      'TAKING AN ORDER',
+      '- Collect: which products (and how many), full name, mobile number, full delivery address.',
+      '- Then show a short summary with the total and ask the customer to confirm.',
+      '- ONLY after the customer clearly confirms, end your reply with this block on its own line:',
+      '  <order>{"items":[{"id":PRODUCT_ID,"qty":1}],"name":"...","phone":"...","address":"..."}</order>',
+      '- Use the product ids (#number) from the list. Never show or mention this block to the customer.',
+    ];
 
   return [
-    `You are the customer-service assistant of the business "${business.name}".`,
-    business.description ? `About the business: ${business.description}` : null,
-    `Tone: ${business.tone}.`,
+    `You are ${profile.assistantName ? `"${profile.assistantName}", ` : ''}the customer-service assistant of the business "${profile.name}".`,
+    profile.description ? `About the business: ${profile.description}` : null,
+    `Tone: ${profile.tone || 'friendly and polite'}.`,
     '',
     'RULES',
-    '- Reply in the language the customer writes in (usually Persian). Keep replies short.',
+    LANGUAGE_RULES[languages] ?? '- Reply in the language the customer writes in (usually Persian).',
+    '- Keep replies short.',
     '- Use ONLY the information below. Never invent products, prices, discounts, policies or delivery times.',
     '- If the answer is not below, say you do not know and that the shop staff will follow up.',
     '- When you mention a product, give its name and price exactly as listed. Do not offer out-of-stock products.',
+    profile.instructions ? `\nSHOP INSTRUCTIONS (follow them unless they conflict with the rules above)\n${profile.instructions}` : null,
+    profile.policies ? `\nSHOP POLICIES\n${profile.policies}` : null,
     '',
-    'TAKING AN ORDER',
-    '- Collect: which products (and how many), full name, mobile number, full delivery address.',
-    '- Then show a short summary with the total and ask the customer to confirm.',
-    '- ONLY after the customer clearly confirms, end your reply with this block on its own line:',
-    '  <order>{"items":[{"id":PRODUCT_ID,"qty":1}],"name":"...","phone":"...","address":"..."}</order>',
-    '- Use the product ids (#number) from the list. Never show or mention this block to the customer.',
+    ...ordering,
     '',
     'PRODUCTS (id | name | price | stock | description)',
     ...productLines,
@@ -170,18 +188,24 @@ function validateOrder(order, products) {
 
 const PRODUCT_LIST_WORDS = ['محصول', 'محصولات', 'قیمت', 'لیست', 'چی دارید', 'چه دارید', 'products', 'price'];
 
+const DEFAULT_FALLBACK = 'پاسخ این سؤال را ندارم. پیام شما ثبت شد و همکاران ما به‌زودی پیگیری می‌کنند.';
+
 /**
  * Offline mode: no AI, just keyword overlap between the question and each FAQ / product.
  * Deliberately simple — it keeps the bot useful when the AI service is down or unpaid.
+ * Returns what it matched so the owner can see why an answer was given.
+ * @returns {{ text: string, matched: 'faq'|'products'|'none', faqId: number|null, productIds: number[] }}
  */
-function offlineAnswer(question, products, faqs) {
+function offlineReply(question, products, faqs, { fallbackMessage = '' } = {}) {
   const words = new Set(keywords(question));
   const score = (text) => keywords(text).filter((w) => words.has(w)).length;
 
   const bestFaq = faqs
     .map((faq) => ({ faq, points: score(faq.question) * 2 + score(faq.answer) }))
     .sort((a, b) => b.points - a.points)[0];
-  if (bestFaq && bestFaq.points >= MIN_KEYWORD_SCORE * 2) return bestFaq.faq.answer;
+  if (bestFaq && bestFaq.points >= MIN_KEYWORD_SCORE * 2) {
+    return { text: bestFaq.faq.answer, matched: 'faq', faqId: bestFaq.faq.id ?? null, productIds: [] };
+  }
 
   const inStock = products.filter((p) => p.in_stock);
   const matched = inStock.filter((p) => score(`${p.name} ${p.description}`) >= MIN_KEYWORD_SCORE);
@@ -189,10 +213,18 @@ function offlineAnswer(question, products, faqs) {
   const toShow = matched.length ? matched : askedForList ? inStock : [];
   if (toShow.length) {
     const list = toShow.map((p) => `• ${p.name} — ${formatToman(p.price)}`).join('\n');
-    return `${list}\n\nبرای ثبت سفارش، نام محصول، نام و نام خانوادگی، شماره موبایل و آدرس را بفرستید تا همکاران ما پیگیری کنند.`;
+    return {
+      text: `${list}\n\nبرای ثبت سفارش، نام محصول، نام و نام خانوادگی، شماره موبایل و آدرس را بفرستید تا همکاران ما پیگیری کنند.`,
+      matched: 'products', faqId: null, productIds: toShow.map((p) => p.id),
+    };
   }
 
-  return 'پاسخ این سؤال را ندارم. پیام شما ثبت شد و همکاران ما به‌زودی پیگیری می‌کنند.';
+  return { text: fallbackMessage || DEFAULT_FALLBACK, matched: 'none', faqId: null, productIds: [] };
+}
+
+/** Text-only form of offlineReply, kept for callers that need just the answer. */
+function offlineAnswer(question, products, faqs) {
+  return offlineReply(question, products, faqs).text;
 }
 
 module.exports = {
@@ -201,6 +233,7 @@ module.exports = {
   extractOrder,
   validateOrder,
   offlineAnswer,
+  offlineReply,
   normalizePhone,
   normalize,
   formatToman,

@@ -65,11 +65,12 @@ function panelRoutes(db) {
     const description = validate.text(req.body?.description ?? '', 0, 1500);
     const tone = validate.text(req.body?.tone, 2, 100);
     if (name === null || description === null || tone === null) return res.status(400).json({ error: 'اطلاعات نامعتبر است' });
-    // Draft and published stay identical until the assistant editor (with its publish step) exists.
-    const config = JSON.stringify({ description, tone });
+        // Merge into the existing settings: the classic panel only knows description and tone.
+    const row = db.prepare('SELECT draft_json, published_json FROM assistant_configs WHERE store_id = ?').get(req.store.id);
+    const merge = (json) => JSON.stringify({ ...JSON.parse(json ?? '{}'), description, tone });
     db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
     db.prepare("UPDATE assistant_configs SET draft_json = ?, published_json = ?, published_at = datetime('now') WHERE store_id = ?")
-      .run(config, config, req.store.id);
+      .run(merge(row?.draft_json), merge(row?.published_json), req.store.id);
     res.json({ ok: true });
   });
 

@@ -33,7 +33,7 @@ function createApp({ db, ask }) {
 
   app.use('/api/auth', accountRoutes(db));
   app.use('/api/panel', panelRoutes(db));
-  app.use('/api/app', appRoutes(db));
+  app.use('/api/app', appRoutes(db, ask));
   app.use('/api/chat', chatRoutes(db, ask));
 
   app.get('/chat/:slug', (req, res) => {

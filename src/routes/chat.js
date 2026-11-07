@@ -3,7 +3,8 @@
 // link can chat; requests from other websites are only accepted from the store's own domain.
 const crypto = require('node:crypto');
 const express = require('express');
-const { buildSystemPrompt, extractOrder, validateOrder, offlineAnswer, formatToman } = require('../assistant');
+const { buildSystemPrompt, extractOrder, validateOrder, offlineReply, formatToman } = require('../assistant');
+const { normalize } = require('../assistantConfig');
 const { usageFor } = require('../plans');
 const { recordEvent } = require('../events');
 const { originAllowed, isOwnOrigin } = require('../origins');
@@ -26,10 +27,10 @@ function findStore(db, slug) {
     WHERE s.slug = ? AND s.disconnected_at IS NULL
   `).get(slug);
   if (!row) return null;
-  const config = JSON.parse(row.published_json ?? '{}');
+  const config = normalize(JSON.parse(row.published_json ?? '{}'), row.name);
   return {
     id: row.id, slug: row.slug, name: row.name, domain: row.domain, workspace_id: row.workspace_id, config,
-    profile: { name: row.name, description: config.description ?? '', tone: config.tone ?? '' },
+    profile: { ...config, name: row.name },
   };
 }
 
@@ -103,7 +104,9 @@ async function handleMessage(db, ask, store, conversationId, message) {
       reply = text;
       context = { mode: 'ai', productIds: products.map((p) => p.id), faqIds: faqs.map((f) => f.id), order: null };
       if (error) { reply = `${reply}\n\n⚠️ سفارش ثبت نشد: ${error}`; context.order = { ok: false, error }; }
-      if (order) {
+      if (order && !store.config.orderTaking) {
+        context.order = { ok: false, error: 'ثبت سفارش در تنظیمات خاموش است' }; // the prompt said no; never trust the model on it
+      } else if (order) {
         const placed = placeOrder(db, store, conversationId, order, products);
         reply = `${reply}\n\n${placed.note}`.trim();
         orderId = placed.orderId;
@@ -116,9 +119,11 @@ async function handleMessage(db, ask, store, conversationId, message) {
   }
 
   if (!reply) {
-    reply = offlineAnswer(message, products, faqs);
+    const offline = offlineReply(message, products, faqs, store.config);
+    reply = offline.text;
     source = 'offline';
-    context = { mode: 'offline' };
+    const faq = offline.faqId ? faqs.find((f) => f.id === offline.faqId) : null;
+    context = { mode: 'offline', matched: offline.matched, faqId: offline.faqId, faqQuestion: faq?.question ?? null, productIds: offline.productIds };
   }
 
   saveMessage(db, conversationId, 'assistant', reply, { source, context });
@@ -153,7 +158,8 @@ function chatRoutes(db, ask) {
     const c = store.config;
     res.json({
       name: store.name,
-      welcome: c.welcome || `سلام! من دستیار ${store.name} هستم. دربارهٔ محصولات و قیمت‌ها بپرسید، یا همین‌جا سفارش بدهید.`,
+      assistantName: c.assistantName,
+      welcome: c.welcome,
       color: /^#[0-9a-f]{6}$/i.test(c.color ?? '') ? c.color : DEFAULT_COLOR,
       position: c.position === 'right' ? 'right' : 'left',
       launcherText: typeof c.launcherText === 'string' ? c.launcherText.slice(0, 30) : '',
