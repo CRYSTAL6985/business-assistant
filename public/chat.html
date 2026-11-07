@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+  <title>گفتگو با فروشگاه</title>
+  <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="chat-page">
+  <main class="chat">
+    <header class="chat-header">
+      <div class="avatar" aria-hidden="true"><svg class="icon"><use href="/icons.svg#bag"/></svg></div>
+      <div class="title">
+        <h1 id="shop-name">&nbsp;</h1>
+        <p class="status" id="status">دستیار فروشگاه · معمولاً در چند ثانیه پاسخ می‌دهد</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-icon" id="new-chat" aria-label="شروع گفتگوی تازه" title="گفتگوی تازه">
+        <svg class="icon" aria-hidden="true"><use href="/icons.svg#rotate"/></svg>
+      </button>
+    </header>
+
+    <div class="log" id="log" role="log" aria-live="polite" aria-label="پیام‌ها"></div>
+
+    <div class="composer-wrap">
+      <div class="suggestions" id="suggestions" aria-label="پیشنهادها">
+        <button type="button" class="chip">چه محصولاتی دارید؟</button>
+        <button type="button" class="chip">هزینهٔ ارسال چقدر است؟</button>
+        <button type="button" class="chip">سایزم را چطور بفهمم؟</button>
+        <button type="button" class="chip">می‌خواهم سفارش بدهم</button>
+      </div>
+      <form class="composer" id="composer">
+        <textarea id="input" rows="1" dir="auto" aria-label="پیام شما" placeholder="پیام خود را بنویسید…" maxlength="1000" enterkeyhint="send" autocomplete="off"></textarea>
+        <span class="counter" id="counter" hidden></span>
+        <button type="submit" class="btn btn-icon" id="send" aria-label="ارسال پیام" disabled>
+          <svg class="icon flip" aria-hidden="true"><use href="/icons.svg#send"/></svg>
+        </button>
+      </form>
+      <p class="chat-foot">پاسخ‌ها خودکار است و ممکن است اشتباه داشته باشد. سفارش‌ها را فروشگاه تأیید می‌کند.</p>
+    </div>
+  </main>
+  <script src="/ui.js"></script>
+  <script src="/chat.js"></script>
+</body>
+</html>

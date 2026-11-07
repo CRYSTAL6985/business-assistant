@@ -1,0 +1,19 @@
+{
+  "name": "business-assistant",
+  "version": "1.0.0",
+  "description": "دستیار هوشمند کسب‌وکار — AI customer assistant that any business can set up with its own products and FAQs",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "seed": "node --env-file-if-exists=.env src/seed.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

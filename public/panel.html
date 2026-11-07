@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+  <title>پنل کسب‌وکار · دستیار هوشمند</title>
+  <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">رفتن به محتوا</a>
+
+  <!-- ===== Logged out ===== -->
+  <section id="auth-view" class="auth" hidden>
+    <div class="card auth-card">
+      <div class="auth-head">
+        <div class="avatar" aria-hidden="true"><svg class="icon"><use href="/icons.svg#sparkles"/></svg></div>
+        <h1>پنل کسب‌وکار</h1>
+        <p class="muted small">دستیار فروشگاه‌تان را راه بیندازید و سفارش‌ها را ببینید.</p>
+      </div>
+
+      <div class="segmented" role="tablist" aria-label="ورود یا ثبت‌نام">
+        <button type="button" role="tab" id="tab-login" aria-controls="login-form" aria-selected="true">ورود</button>
+        <button type="button" role="tab" id="tab-register" aria-controls="register-form" aria-selected="false">ثبت‌نام</button>
+      </div>
+
+      <form id="login-form" class="stack" role="tabpanel" aria-labelledby="tab-login" novalidate>
+        <div class="field">
+          <label for="login-email">ایمیل</label>
+          <input id="login-email" name="email" type="email" class="ltr" autocomplete="username" inputmode="email" required>
+        </div>
+        <div class="field">
+          <label for="login-password">رمز عبور</label>
+          <div class="password">
+            <input id="login-password" name="password" type="password" class="ltr" autocomplete="current-password" required>
+            <button type="button" class="btn btn-ghost btn-icon" data-toggle-password aria-label="نمایش رمز عبور"><svg class="icon" aria-hidden="true"><use href="/icons.svg#eye"/></svg></button>
+          </div>
+        </div>
+        <p class="form-error" role="alert"></p>
+        <button type="submit" class="btn">ورود به پنل</button>
+      </form>
+
+      <form id="register-form" class="stack" role="tabpanel" aria-labelledby="tab-register" hidden novalidate>
+        <div class="field">
+          <label for="reg-name">نام کسب‌وکار</label>
+          <input id="reg-name" name="name" autocomplete="organization" required>
+        </div>
+        <div class="field">
+          <label for="reg-slug">نشانی صفحهٔ گفتگو</label>
+          <input id="reg-slug" name="slug" class="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="my-shop" required aria-describedby="slug-hint slug-preview">
+          <span class="hint" id="slug-hint">حروف کوچک انگلیسی، عدد و خط تیره · ۳ تا ۳۰ حرف</span>
+          <span class="slug-preview" id="slug-preview"></span>
+        </div>
+        <div class="field">
+          <label for="reg-email">ایمیل</label>
+          <input id="reg-email" name="email" type="email" class="ltr" autocomplete="email" inputmode="email" required>
+        </div>
+        <div class="field">
+          <label for="reg-password">رمز عبور</label>
+          <div class="password">
+            <input id="reg-password" name="password" type="password" class="ltr" autocomplete="new-password" minlength="8" required aria-describedby="pw-hint">
+            <button type="button" class="btn btn-ghost btn-icon" data-toggle-password aria-label="نمایش رمز عبور"><svg class="icon" aria-hidden="true"><use href="/icons.svg#eye"/></svg></button>
+          </div>
+          <span class="hint" id="pw-hint">حداقل ۸ حرف</span>
+        </div>
+        <p class="form-error" role="alert"></p>
+        <button type="submit" class="btn">ساخت حساب</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== Logged in ===== -->
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="avatar" aria-hidden="true"><svg class="icon icon-sm"><use href="/icons.svg#bag"/></svg></div>
+          <span id="biz-title"></span>
+        </div>
+        <div class="topbar-actions">
+          <a class="btn btn-secondary btn-sm" id="chat-link" target="_blank" rel="noopener">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#external"/></svg>صفحهٔ گفتگو
+          </a>
+          <button type="button" class="btn btn-ghost btn-sm btn-icon" id="logout" aria-label="خروج" title="خروج">
+            <svg class="icon icon-sm flip" aria-hidden="true"><use href="/icons.svg#logout"/></svg>
+          </button>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="بخش‌های پنل">
+        <button type="button" class="tab" role="tab" id="t-overview" data-tab="overview" aria-controls="p-overview"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#sliders"/></svg>نمای کلی</button>
+        <button type="button" class="tab" role="tab" id="t-products" data-tab="products" aria-controls="p-products"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#package"/></svg>محصولات</button>
+        <button type="button" class="tab" role="tab" id="t-faqs" data-tab="faqs" aria-controls="p-faqs"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#help"/></svg>سؤالات متداول</button>
+        <button type="button" class="tab" role="tab" id="t-orders" data-tab="orders" aria-controls="p-orders"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#inbox"/></svg>سفارش‌ها<span class="count" id="new-orders-count" hidden></span></button>
+        <button type="button" class="tab" role="tab" id="t-conversations" data-tab="conversations" aria-controls="p-conversations"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#message"/></svg>گفتگوها</button>
+      </nav>
+    </header>
+
+    <main class="page" id="main" tabindex="-1">
+      <!-- Overview -->
+      <section class="tabpanel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
+        <div class="stats">
+          <div class="card stat">
+            <span class="label small">پاسخ‌های این ماه</span>
+            <span class="value" id="stat-usage"></span>
+            <span class="small muted" id="stat-plan"></span>
+            <div class="meter" role="progressbar" id="usage-meter" aria-label="مصرف اشتراک" aria-valuemin="0"><span id="usage-bar"></span></div>
+          </div>
+          <div class="card stat"><span class="label small">سفارش‌های جدید</span><span class="value" id="stat-orders"></span><span class="small muted">منتظر بررسی شما</span></div>
+          <div class="card stat"><span class="label small">گفتگوهای این ماه</span><span class="value" id="stat-convos"></span><span class="small muted">مشتری‌هایی که پیام دادند</span></div>
+          <div class="card stat"><span class="label small">محصولات</span><span class="value" id="stat-products"></span><span class="small muted" id="stat-faqs"></span></div>
+        </div>
+
+        <div class="split">
+          <form class="card stack" id="business-form" novalidate>
+            <div class="stack-sm">
+              <h2>اطلاعات کسب‌وکار</h2>
+              <p class="muted small">دستیار فقط از همین اطلاعات، محصولات و سؤالات متداول جواب می‌دهد. هرچه دقیق‌تر، جواب‌ها بهتر.</p>
+            </div>
+            <div class="field"><label for="biz-name">نام</label><input id="biz-name" name="name" required></div>
+            <div class="field">
+              <label for="biz-desc">دربارهٔ کسب‌وکار</label>
+              <textarea id="biz-desc" name="description" rows="5" aria-describedby="desc-hint"></textarea>
+              <span class="hint" id="desc-hint">مثلاً ارسال، ساعت کاری، آدرس، شیوهٔ پرداخت</span>
+            </div>
+            <div class="field">
+              <label for="biz-tone">لحن دستیار</label>
+              <input id="biz-tone" name="tone" required aria-describedby="tone-hint">
+              <span class="hint" id="tone-hint">مثلاً «رسمی و کوتاه» یا «صمیمی مثل فروشندهٔ محله»</span>
+            </div>
+            <p class="form-error" role="alert"></p>
+            <div class="form-actions"><button type="submit" class="btn">ذخیرهٔ تغییرات</button></div>
+          </form>
+
+          <section class="card stack sticky">
+            <div class="stack-sm">
+              <h2>افزودن به سایت شما</h2>
+              <p class="muted small">این یک خط را در سایت خود بگذارید تا دکمهٔ گفتگو گوشهٔ صفحه نمایش داده شود.</p>
+            </div>
+            <div class="embed">
+              <code id="embed-code"></code>
+              <button type="button" class="btn btn-secondary btn-icon" id="copy-embed" aria-label="کپی کد"><svg class="icon icon-sm" aria-hidden="true"><use href="/icons.svg#copy"/></svg></button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Products -->
+      <section class="tabpanel" id="p-products" role="tabpanel" aria-labelledby="t-products" hidden>
+        <div class="page-head"><div class="stack-sm"><h2>محصولات</h2><p class="muted small">قیمت‌ها همین‌جا ثبت می‌شوند؛ دستیار هیچ‌وقت قیمت را خودش تعیین نمی‌کند.</p></div></div>
+        <div class="split">
+          <div class="list" id="product-list"></div>
+          <form class="card stack sticky" id="product-form" novalidate>
+            <h2 data-form-title data-new="محصول جدید" data-edit="ویرایش محصول">محصول جدید</h2>
+            <input type="hidden" name="id">
+            <div class="field"><label for="p-name">نام محصول</label><input id="p-name" name="name" dir="auto" required></div>
+            <div class="field">
+              <label for="p-price">قیمت (تومان)</label>
+              <input id="p-price" name="price" type="text" inputmode="numeric" class="ltr num" required aria-describedby="price-preview">
+              <span class="hint" id="price-preview"></span>
+            </div>
+            <div class="field"><label for="p-desc">توضیحات</label><textarea id="p-desc" name="description" rows="3" dir="auto"></textarea></div>
+            <label class="check"><input type="checkbox" name="inStock" checked> موجود است</label>
+            <p class="form-error" role="alert"></p>
+            <div class="form-actions">
+              <button type="submit" class="btn">ذخیره</button>
+              <button type="reset" class="btn btn-ghost">انصراف</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- FAQs -->
+      <section class="tabpanel" id="p-faqs" role="tabpanel" aria-labelledby="t-faqs" hidden>
+        <div class="page-head"><div class="stack-sm"><h2>سؤالات متداول</h2><p class="muted small">وقتی هوش مصنوعی در دسترس نباشد، دستیار از همین فهرست جواب می‌دهد.</p></div></div>
+        <div class="split">
+          <div class="list" id="faq-list"></div>
+          <form class="card stack sticky" id="faq-form" novalidate>
+            <h2 data-form-title data-new="سؤال جدید" data-edit="ویرایش سؤال">سؤال جدید</h2>
+            <input type="hidden" name="id">
+            <div class="field"><label for="f-q">سؤال</label><input id="f-q" name="question" dir="auto" required></div>
+            <div class="field"><label for="f-a">پاسخ</label><textarea id="f-a" name="answer" rows="4" dir="auto" required></textarea></div>
+            <p class="form-error" role="alert"></p>
+            <div class="form-actions">
+              <button type="submit" class="btn">ذخیره</button>
+              <button type="reset" class="btn btn-ghost">انصراف</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Orders -->
+      <section class="tabpanel" id="p-orders" role="tabpanel" aria-labelledby="t-orders" hidden>
+        <div class="page-head"><div class="stack-sm"><h2>سفارش‌ها</h2><p class="muted small">سفارش‌هایی که مشتری در گفتگو تأیید کرده. مبلغ از قیمت‌های ثبت‌شدهٔ شما حساب می‌شود.</p></div></div>
+        <div class="list" id="order-list"></div>
+      </section>
+
+      <!-- Conversations -->
+      <section class="tabpanel" id="p-conversations" role="tabpanel" aria-labelledby="t-conversations" hidden>
+        <div class="page-head"><div class="stack-sm"><h2>گفتگوها</h2><p class="muted small">۳۰ گفتگوی آخر. ببینید مشتری‌ها چه می‌پرسند تا سؤالات متداول را کامل کنید.</p></div></div>
+        <div class="list" id="conversation-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/ui.js"></script>
+  <script src="/panel.js"></script>
+</body>
+</html>
