@@ -4,6 +4,7 @@ const MIGRATIONS = [
   require('./001-initial'),
   require('./002-workspaces'),
   require('./003-events'),
+  require('./004-sync-columns'),
 ];
 
 /**

@@ -102,3 +102,19 @@ test('migration keeps id counters so old order numbers are never reused', () => 
   const store = db.prepare(`INSERT INTO stores (workspace_id, slug, name) VALUES (7, 'second', 'S')`).run();
   assert.ok(Number(store.lastInsertRowid) > 7);
 });
+
+test('existing products become source=local and orders source=assistant', () => {
+  const db = v1Database();
+  migrate(db);
+  assert.equal(db.prepare('SELECT source FROM products').get().source, 'local');
+  assert.equal(db.prepare('SELECT source FROM orders').get().source, 'assistant');
+});
+
+test('duplicate (store_id, external_id) is rejected, NULL external ids are fine', () => {
+  const db = v1Database();
+  migrate(db);
+  const add = db.prepare("INSERT INTO products (store_id, name, price, external_id, source) VALUES (7, 'P', 1, ?, 'woocommerce')");
+  add.run('w-1');
+  assert.throws(() => add.run('w-1'), /UNIQUE/);
+  db.prepare("INSERT INTO products (store_id, name, price) VALUES (7, 'A', 1), (7, 'B', 1)").run();
+});
