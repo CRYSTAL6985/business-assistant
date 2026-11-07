@@ -19,4 +19,23 @@ function storeFor(db, req, storeId) {
     .get(storeId, req.workspaceId) ?? null;
 }
 
-module.exports = { workspaceStores, storeFor };
+/**
+ * The stores a list request covers: the one named by ?store= (if it is the workspace's own) or all
+ * connected stores. Null means ?store= named a store the user may not see -> answer 404.
+ */
+function requestStores(db, req) {
+  const raw = req.query.store;
+  if (raw === undefined || raw === '') return workspaceStores(db, req.workspaceId);
+  const id = Number(raw);
+  const store = Number.isInteger(id) && id > 0 ? storeFor(db, req, id) : null;
+  return store ? [store] : null;
+}
+
+/** A row of `table` (which has store_id) by id, only if its store belongs to the user's workspace. */
+function ownedRow(db, req, table, id) {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return db.prepare(`SELECT r.*, s.name AS store_name FROM ${table} r JOIN stores s ON s.id = r.store_id WHERE r.id = ? AND s.workspace_id = ?`)
+    .get(id, req.workspaceId) ?? null;
+}
+
+module.exports = { workspaceStores, storeFor, requestStores, ownedRow };
