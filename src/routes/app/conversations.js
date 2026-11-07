@@ -4,6 +4,7 @@ const express = require('express');
 const validate = require('../../validate');
 const { requestStores } = require('../../scope');
 const { parsePaging, pageResult, likePattern } = require('../../paging');
+const { addStaffReply, takeOver } = require('../../inbox');
 
 const NOT_FOUND = { error: 'گفتگو پیدا نشد' };
 const MAX_REPLY = 2000;
@@ -68,7 +69,7 @@ function conversationRoutes(db) {
   }));
 
   const setState = (sql) => withOwn((req, res, c) => { db.prepare(sql).run(c.id); res.json({ ok: true }); });
-  router.post('/:id/takeover', setState("UPDATE conversations SET handler = 'human' WHERE id = ?"));
+  router.post('/:id/takeover', withOwn((req, res, c) => { takeOver(db, c.id); res.json({ ok: true }); }));
   router.post('/:id/release', setState("UPDATE conversations SET handler = 'ai' WHERE id = ?"));
   router.post('/:id/close', setState("UPDATE conversations SET status = 'closed', unread = 0 WHERE id = ?"));
   router.post('/:id/reopen', setState("UPDATE conversations SET status = 'open' WHERE id = ?"));
@@ -76,10 +77,7 @@ function conversationRoutes(db) {
   router.post('/:id/messages', withOwn((req, res, c) => {
     const content = validate.text(req.body?.content, 1, MAX_REPLY);
     if (!content) return res.status(400).json({ error: `پاسخ باید بین ۱ تا ${MAX_REPLY} حرف باشد` });
-    const info = db.prepare("INSERT INTO messages (conversation_id, role, content, source, user_id) VALUES (?, 'staff', ?, 'staff', ?)").run(c.id, content, req.userId);
-    // Replying by hand means a person is handling this chat now: the AI steps back.
-    db.prepare("UPDATE conversations SET handler = 'human', status = 'open', unread = 0, last_message_at = datetime('now') WHERE id = ?").run(c.id);
-    res.status(201).json({ id: Number(info.lastInsertRowid) });
+    res.status(201).json({ id: addStaffReply(db, c.id, content, req.userId) });
   }));
 
   router.post('/:id/notes', withOwn((req, res, c) => {

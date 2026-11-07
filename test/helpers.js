@@ -3,9 +3,10 @@ const assert = require('node:assert/strict');
 const { openDb } = require('../src/db');
 const { createApp } = require('../src/server');
 
-async function startApp(t, { ask = null } = {}) {
+async function startApp(t, { ask = null, fetch: doFetch } = {}) {
   const db = openDb(':memory:');
-  const server = createApp({ db, ask }).listen(0);
+  const app = createApp({ db, ask, allowPrivateUrls: true, retryDelays: [0, 0], ...(doFetch ? { fetch: doFetch } : {}) });
+  const server = app.listen(0);
   await new Promise((r) => server.once('listening', r));
   t.after(() => server.close());
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -25,7 +26,7 @@ async function startApp(t, { ask = null } = {}) {
     const store = db.prepare('SELECT id, workspace_id FROM stores WHERE slug = ?').get(slug);
     return { call, storeId: store.id, workspaceId: store.workspace_id };
   };
-  return { db, base, client, register };
+  return { db, base, client, register, services: app.locals.services };
 }
 
 module.exports = { startApp };

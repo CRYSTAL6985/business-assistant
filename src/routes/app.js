@@ -14,10 +14,11 @@ const { faqRoutes } = require('./app/faqs');
 const { orderRoutes } = require('./app/orders');
 const { conversationRoutes } = require('./app/conversations');
 const { assistantRoutes } = require('./app/assistant');
+const { integrationRoutes } = require('./app/integrations');
 
 const ACTIVITY_TYPES = ['order', 'conversation'];
 
-function appRoutes(db, ask) {
+function appRoutes(db, ask, services) {
   const router = express.Router();
   router.use(requireUser(db));
 
@@ -27,6 +28,7 @@ function appRoutes(db, ask) {
   router.use('/orders', orderRoutes(db));
   router.use('/conversations', conversationRoutes(db));
   router.use('/assistant', assistantRoutes(db, ask));
+  router.use('/integrations', integrationRoutes(services));
 
   const workspaceOf = (req) => db.prepare('SELECT id, name, plan, paid_until FROM workspaces WHERE id = ?').get(req.workspaceId);
 

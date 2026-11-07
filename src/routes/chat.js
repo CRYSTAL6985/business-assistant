@@ -53,6 +53,8 @@ function openConversation(db, storeId, requestedId) {
 function saveMessage(db, conversationId, role, content, { source = null, context = null } = {}) {
   db.prepare('INSERT INTO messages (conversation_id, role, content, source, context_json) VALUES (?, ?, ?, ?, ?)')
     .run(conversationId, role, content, source, context ? JSON.stringify(context) : null);
+  // An answer ends the customer's wait; the next unanswered message may notify the shop again.
+  if (role !== 'user') db.prepare('UPDATE conversations SET waiting_notified_at = NULL WHERE id = ?').run(conversationId);
 }
 
 /** A customer wrote: the conversation is (re)opened, unread for the owner, and sorted to the top. */
@@ -70,7 +72,7 @@ function recentHistory(db, conversationId) {
 }
 
 /** Validates the AI's order block and saves it; returns the line appended to the reply. */
-function placeOrder(db, store, conversationId, order, products) {
+function placeOrder(db, store, conversationId, order, products, outbound) {
   const result = validateOrder(order, products);
   if (!result.ok) return { note: `⚠️ سفارش ثبت نشد: ${result.error}`, orderId: null, error: result.error };
 
@@ -81,12 +83,13 @@ function placeOrder(db, store, conversationId, order, products) {
   `).run(store.id, conversationId, name, phone, address, JSON.stringify(items), total);
   const orderId = Number(info.lastInsertRowid);
   recordEvent(db, { storeId: store.id, type: 'order.created', refId: orderId, summary: name });
+  outbound?.emit(store.id, 'order.created', { orderId, conversationId, customerName: name, phone, address, items, total });
   db.prepare("UPDATE conversations SET customer_name = CASE WHEN customer_name = '' THEN ? ELSE customer_name END WHERE id = ?").run(name, conversationId);
   return { note: `✅ سفارش شما با شمارهٔ ${orderId} ثبت شد. مبلغ کل: ${formatToman(total)}`, orderId, error: null };
 }
 
 /** One customer message -> one assistant reply. `ask` is the AI call, or null for offline mode. */
-async function handleMessage(db, ask, store, conversationId, message) {
+async function handleMessage(db, ask, store, conversationId, message, outbound = null) {
   saveCustomerMessage(db, conversationId, message);
 
   const products = db.prepare('SELECT id, name, description, price, in_stock FROM products WHERE store_id = ? ORDER BY id').all(store.id);
@@ -107,7 +110,7 @@ async function handleMessage(db, ask, store, conversationId, message) {
       if (order && !store.config.orderTaking) {
         context.order = { ok: false, error: 'ثبت سفارش در تنظیمات خاموش است' }; // the prompt said no; never trust the model on it
       } else if (order) {
-        const placed = placeOrder(db, store, conversationId, order, products);
+        const placed = placeOrder(db, store, conversationId, order, products, outbound);
         reply = `${reply}\n\n${placed.note}`.trim();
         orderId = placed.orderId;
         context.order = placed.orderId ? { ok: true, orderId } : { ok: false, error: placed.error };
@@ -130,7 +133,7 @@ async function handleMessage(db, ask, store, conversationId, message) {
   return { reply, source, orderId };
 }
 
-function chatRoutes(db, ask) {
+function chatRoutes(db, ask, { outbound = null } = {}) {
   const router = express.Router();
 
   // Every route below resolves the store and refuses requests from other websites.
@@ -194,7 +197,7 @@ function chatRoutes(db, ask) {
         return res.json({ conversationId: conversation.id, reply: LIMIT_REACHED_REPLY, source: 'limit', orderId: null });
       }
 
-      const result = await handleMessage(db, ask, store, conversation.id, message);
+      const result = await handleMessage(db, ask, store, conversation.id, message, outbound);
       res.json({ conversationId: conversation.id, ...result });
     } catch (err) {
       next(err);
