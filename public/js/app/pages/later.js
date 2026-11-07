@@ -1,7 +1,6 @@
 // Honest placeholder for sections whose new page is built in a later phase. Where the feature exists
 // in the classic panel today, it links there instead of pretending.
 const CLASSIC = {
-  conversations: { tab: 'conversations', note: 'گفتگوهای مشتریان را فعلاً در پنل قدیمی ببینید.' },
   assistant: { tab: 'overview', note: 'توضیحات کسب‌وکار و لحن دستیار فعلاً در پنل قدیمی تنظیم می‌شود.' },
   settings: { tab: 'overview', note: 'نام کسب‌وکار فعلاً در پنل قدیمی تغییر می‌کند.' },
 };

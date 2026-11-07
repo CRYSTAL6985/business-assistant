@@ -8,8 +8,9 @@ import * as products from './pages/products.js';
 import * as knowledge from './pages/knowledge.js';
 import * as orders from './pages/orders.js';
 import * as stores from './pages/stores.js';
+import * as conversations from './pages/conversations.js';
 
-const PAGES = { overview, products, knowledge, orders, stores };
+const PAGES = { overview, products, knowledge, orders, stores, conversations };
 const main = document.getElementById('main');
 let me = null;
 

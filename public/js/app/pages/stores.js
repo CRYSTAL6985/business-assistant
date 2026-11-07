@@ -11,6 +11,18 @@ function snippetFor(store) {
   return `<script src="${location.origin}/widget.js" data-business="${store.slug}" defer></script>`;
 }
 
+/** Where the widget was really seen loading — the only proof it is installed. */
+function installState(store) {
+  if (!store.sightings.length) {
+    return el('p', { class: 'subtle small' }, icon('alert', 'icon icon-sm'), ' ویجت هنوز روی هیچ سایتی دیده نشده.',
+      store.domain ? '' : ' دامنه را ثبت کنید تا ویجت فقط روی سایت خودتان کار کند.');
+  }
+  return el('div', { class: 'field' }, el('span', { class: 'small muted', text: 'ویجت دیده شده روی:' }),
+    el('ul', { class: 'plain-list' }, ...store.sightings.map((x) => el('li', { class: 'small' },
+      el('span', { class: 'pill pill-success' }, el('span', { class: 'dot' }), el('span', { class: 'ltr', text: x.origin })),
+      el('span', { class: 'subtle', text: ` آخرین بار ${faDate(x.lastSeenAt)}` })))));
+}
+
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast('کپی شد'); } catch { toast('کپی نشد؛ متن را دستی انتخاب کنید', 'alert'); }
 }
@@ -60,7 +72,7 @@ export async function render(main, { refreshMe }) {
             el('div', { class: 'field' }, el('span', { class: 'small muted', text: 'کد ویجت — قبل از </body> سایت قرار دهید' }),
               el('div', { class: 'snippet' }, el('code', { text: snippetFor(store) }),
                 el('button', { class: 'btn btn-secondary btn-sm', type: 'button', onclick: () => copy(snippetFor(store)) }, icon('copy', 'icon icon-sm'), 'کپی'))),
-            el('p', { class: 'subtle small', text: 'وضعیت نصب ویجت روی سایت در مرحلهٔ «یکپارچه‌سازی‌ها» نمایش داده می‌شود.' })));
+            installState(store)));
   }
 
   async function act(task, message) {

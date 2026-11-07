@@ -545,3 +545,10 @@ details.convo[open] summary { border-bottom: 1px solid var(--line); }
 @media (prefers-contrast: more) {
   :root { --line: rgba(0, 0, 0, 0.35); --line-strong: rgba(0, 0, 0, 0.6); --ink-2: var(--ink); --ink-3: var(--ink); }
 }
+
+/* Staff replies (a person from the shop) and system notices in the customer chat. */
+.msg.assistant.staff { background: var(--accent-soft); color: var(--ink); }
+.notice {
+  align-self: center; max-width: 90%; margin: 6px 0; padding: 6px 14px; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink-2); font-size: var(--text-sm); text-align: center;
+}

@@ -10,12 +10,15 @@ const counter = document.getElementById('counter');
 const suggestions = document.getElementById('suggestions');
 
 const COUNTER_FROM = 800; // show the remaining characters only when it starts to matter
+const POLL_MS = 5000;      // how often an open page checks for replies from the shop's staff
 const NEAR_BOTTOM_PX = 120;
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
 let shop = null;
 let conversationId = readStored();
 let sending = false;
+let lastSeenId = 0; // newest message id this page has drawn or skipped
+let config = null;  // branding from /api/chat/<slug>/config
 
 function readStored() {
   try { return localStorage.getItem(storageKey); } catch { return null; }
@@ -37,6 +40,7 @@ function scrollToEnd(force) {
 }
 
 function metaFor(source, orderId) {
+  if (source === 'staff') return [icon('message', 'icon icon-sm'), el('span', { text: 'پشتیبان فروشگاه' })];
   if (orderId) return el('span', { class: 'badge badge-success', text: `سفارش ${faNumber(orderId)} ثبت شد` });
   if (source === 'offline') return [icon('wifi-off', 'icon icon-sm'), el('span', { text: 'پاسخ خودکار از سؤالات متداول' })];
   return null;
@@ -44,7 +48,7 @@ function metaFor(source, orderId) {
 
 function addMessage(role, text, { source, orderId } = {}) {
   const meta = metaFor(source, orderId);
-  const bubble = el('div', { class: `msg ${role}` }, bidiText(text), meta && el('div', { class: 'msg-meta' }, meta));
+  const bubble = el('div', { class: `msg ${role === 'staff' ? 'assistant staff' : role}` }, bidiText(text), meta && el('div', { class: 'msg-meta' }, meta));
   const stick = role === 'user' || isNearBottom();
   log.append(bubble);
   scrollToEnd(stick);
@@ -74,7 +78,14 @@ function drawIntro() {
       el('h2', { text: shop.name }),
       shop.description && el('p', { class: 'muted', text: shop.description })),
   );
-  addMessage('assistant', `سلام! من دستیار ${shop.name} هستم. دربارهٔ محصولات و قیمت‌ها بپرسید، یا همین‌جا سفارش بدهید.`);
+  addMessage('assistant', config?.welcome ?? `سلام! من دستیار ${shop.name} هستم. دربارهٔ محصولات و قیمت‌ها بپرسید، یا همین‌جا سفارش بدهید.`);
+}
+
+/** System line (not a message), e.g. "a colleague will answer soon". Shown once in a row. */
+function addNotice(text) {
+  if (log.lastElementChild?.classList.contains('notice') && log.lastElementChild.textContent === text) return;
+  log.append(el('div', { class: 'notice', role: 'status', text }));
+  scrollToEnd(true);
 }
 
 function setSuggestionsVisible(visible) {
@@ -94,6 +105,9 @@ async function loadShop() {
     return false;
   }
   shop = await res.json();
+  config = await fetch(`/api/chat/${encodeURIComponent(slug)}/config`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (config?.color) document.documentElement.style.setProperty('--accent', config.color);
+  if (config?.color) document.documentElement.style.setProperty('--bubble-user', config.color);
   document.title = `گفتگو با ${shop.name}`;
   document.getElementById('shop-name').textContent = shop.name;
   return true;
@@ -107,6 +121,7 @@ async function loadHistory() {
     const messages = res.ok ? await res.json() : [];
     if (!messages.length) return store((conversationId = null));
     for (const m of messages) addMessage(m.role, m.content, { source: m.source });
+    lastSeenId = messages.at(-1).id;
     setSuggestionsVisible(false);
     log.scrollTop = log.scrollHeight;
   } catch {
@@ -138,7 +153,9 @@ async function send(text, { echo = true } = {}) {
     }
     conversationId = data.conversationId;
     store(conversationId);
-    addMessage('assistant', data.reply, { source: data.source, orderId: data.orderId });
+    if (data.reply) addMessage('assistant', data.reply, { source: data.source, orderId: data.orderId });
+    if (data.notice) addNotice(data.notice);
+    startPolling();
   } catch {
     typing.remove();
     addError('اتصال به اینترنت برقرار نشد.', () => send(text, { echo: false }));
@@ -170,6 +187,27 @@ function submitInput() {
   send(text);
 }
 
+/* ---------- staff replies ---------- */
+
+let pollTimer = null;
+/** While the page is open, fetch messages newer than lastSeenId and draw the staff's replies. */
+async function poll() {
+  if (!conversationId || document.hidden || sending) return;
+  try {
+    const res = await fetch(`/api/chat/${encodeURIComponent(slug)}/history/${encodeURIComponent(conversationId)}?after=${lastSeenId}`);
+    if (!res.ok) return;
+    const fresh = await res.json();
+    for (const m of fresh) {
+      // Own messages and assistant replies were already drawn by send(); only staff replies are new here.
+      if (m.role === 'staff') addMessage('staff', m.content, { source: 'staff' });
+      lastSeenId = Math.max(lastSeenId, m.id);
+    }
+  } catch { /* offline for a moment: the next poll tries again */ }
+}
+function startPolling() {
+  if (!pollTimer) pollTimer = setInterval(poll, POLL_MS);
+}
+
 /* ---------- events ---------- */
 
 form.addEventListener('submit', (event) => {
@@ -199,6 +237,7 @@ suggestions.addEventListener('click', (event) => {
 document.getElementById('new-chat').addEventListener('click', () => {
   if (sending) return;
   store((conversationId = null));
+  lastSeenId = 0;
   drawIntro();
   setSuggestionsVisible(true);
   toast('گفتگوی تازه شروع شد');
@@ -208,5 +247,6 @@ document.getElementById('new-chat').addEventListener('click', () => {
 (async () => {
   if (!(await loadShop())) return;
   await loadHistory();
+  if (conversationId) startPolling();
   if (!isTouch) input.focus();
 })();

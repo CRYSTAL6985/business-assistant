@@ -44,6 +44,7 @@ function createApp({ db, ask }) {
   });
   app.get('/panel', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'panel.html')));
   app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'app.html')));
+  app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
   app.use(express.static(PUBLIC_DIR));
 
   // Last stop for errors: log the details, show the browser only a generic message.
