@@ -7,6 +7,7 @@ const { askModel } = require('./assistant');
 const { chatRoutes } = require('./routes/chat');
 const { panelRoutes } = require('./routes/panel');
 const { accountRoutes } = require('./routes/account');
+const { appRoutes } = require('./routes/app');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const DEFAULT_PORT = 3000;
@@ -30,10 +31,12 @@ function createApp({ db, ask }) {
 
   app.use('/api/auth', accountRoutes(db));
   app.use('/api/panel', panelRoutes(db));
+  app.use('/api/app', appRoutes(db));
   app.use('/api/chat', chatRoutes(db, ask));
 
   app.get('/chat/:slug', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'chat.html')));
   app.get('/panel', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'panel.html')));
+  app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'app.html')));
   app.use(express.static(PUBLIC_DIR));
 
   // Last stop for errors: log the details, show the browser only a generic message.
