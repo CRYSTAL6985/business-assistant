@@ -5,6 +5,7 @@ const express = require('express');
 const { requireUser } = require('../auth');
 const { usageFor, effectivePlan } = require('../plans');
 const { storeFor } = require('../scope');
+const { recordEvent } = require('../events');
 const validate = require('../validate');
 
 const ORDER_STATUSES = ['new', 'confirmed', 'sent', 'cancelled'];
@@ -120,7 +121,9 @@ function panelRoutes(db) {
     const id = validate.id(req.params.id);
     const status = req.body?.status;
     if (!id || !ORDER_STATUSES.includes(status)) return res.status(400).json({ error: 'وضعیت نامعتبر است' });
-    oneRow(res, db.prepare('UPDATE orders SET status = ? WHERE id = ? AND store_id = ?').run(status, id, req.store.id));
+    const info = db.prepare('UPDATE orders SET status = ? WHERE id = ? AND store_id = ?').run(status, id, req.store.id);
+    if (info.changes === 1) recordEvent(db, { storeId: req.store.id, type: 'order.status', refId: id, summary: status });
+    oneRow(res, info);
   });
 
   router.get('/conversations', (req, res) => {

@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const { buildSystemPrompt, extractOrder, validateOrder, offlineAnswer, formatToman } = require('../assistant');
 const { usageFor } = require('../plans');
+const { recordEvent } = require('../events');
 const validate = require('../validate');
 
 const HISTORY_LIMIT = 12; // how many earlier messages the AI sees — keeps prompts small and cheap
@@ -38,6 +39,7 @@ function openConversation(db, storeId, requestedId) {
   }
   const id = crypto.randomUUID();
   db.prepare('INSERT INTO conversations (id, store_id) VALUES (?, ?)').run(id, storeId);
+  recordEvent(db, { storeId, type: 'conversation.started', refId: id });
   return id;
 }
 
@@ -64,6 +66,7 @@ function placeOrder(db, store, conversationId, order, products) {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(store.id, conversationId, name, phone, address, JSON.stringify(items), total);
   const orderId = Number(info.lastInsertRowid);
+  recordEvent(db, { storeId: store.id, type: 'order.created', refId: orderId, summary: name });
   return { note: `✅ سفارش شما با شمارهٔ ${orderId} ثبت شد. مبلغ کل: ${formatToman(total)}`, orderId };
 }
 
