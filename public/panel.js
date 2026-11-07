@@ -29,6 +29,7 @@ async function api(method, path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && path.startsWith('/api/panel')) showAuth();
+  if (res.status === 403 && data.operator) location.assign('/admin'); // signed in as the operator, who has no shop
   if (!res.ok) throw new Error(data.error || 'خطایی رخ داد. دوباره امتحان کنید.');
   return data;
 }
@@ -89,7 +90,11 @@ function wireAuth() {
     slug.value = slug.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     $('#slug-preview').textContent = slug.value ? `${location.origin}/chat/${slug.value}` : '';
   });
-  handleForm($('#login-form'), async (f) => { await api('POST', '/api/auth/login', f); afterLogin(); });
+  handleForm($('#login-form'), async (f) => {
+    const res = await api('POST', '/api/auth/login', f);
+    if (res.operator && !res.hasWorkspace) return location.assign('/admin'); // the operator has no shop panel
+    afterLogin();
+  });
   handleForm($('#register-form'), async (f) => { await api('POST', '/api/auth/register', f); afterLogin('حساب ساخته شد. خوش آمدید!'); });
 }
 

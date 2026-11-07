@@ -1,0 +1,50 @@
+/* Analytics, billing, settings — and the suspension notice shown above every page. */
+.notice-slot:empty { display: none; }
+.notice-slot { padding: var(--s-4) var(--s-8) 0; }
+.notice-danger { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; padding: var(--s-3) var(--s-4); border-radius: var(--r); background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+.notice-danger a { color: inherit; }
+.card-title { margin: 0; font-size: var(--t-lg); font-weight: 800; }
+.data-card > .card-title { padding: var(--s-5) var(--s-6) var(--s-2); }
+.card-note { margin: 0; padding: 0 var(--s-6) var(--s-3); }
+.line { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); }
+.ltr-inline { direction: ltr; unicode-bidi: isolate; }
+
+/* Analytics */
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.chart-total { margin: 0; font-size: var(--t-lg); }
+.chart-total strong { font-size: var(--t-xl); font-weight: 800; }
+.chart-box { min-width: 0; }
+.bars { display: block; width: 100%; height: auto; max-height: 260px; }
+.bars .bar { fill: var(--accent); transition: opacity var(--dur-fast); }
+.bars .bar:hover { opacity: 0.75; }
+.bars .axis { stroke: var(--sep); stroke-width: 1; }
+.bars .tick { fill: var(--ink-3); font-size: 11px; font-family: var(--font); }
+.an-row { display: grid; gap: 2px; }
+
+/* Billing */
+.bill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); align-items: start; }
+.bill-grid > .bill-plans, .bill-grid > .data-card { grid-column: 1 / -1; }
+.bill-plan { display: grid; gap: var(--s-3); }
+.bill-plan p { margin: 0; }
+.bill-plan-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.bill-plan h2 { margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.01em; }
+.bill-plan .bill-plan-head { display: grid; gap: 2px; justify-content: start; }
+.bill-usage .line { color: var(--ink-2); }
+.bill-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.bill-tier h3 { margin: 0; font-size: var(--t-lg); font-weight: 800; }
+.bill-tier.is-current { box-shadow: var(--edge), 0 0 0 1px var(--accent-soft); }
+.bill-features { margin-top: var(--s-3); gap: var(--s-2); }
+.bill-features li { display: flex; align-items: center; gap: var(--s-2); color: var(--ink-2); }
+.bill-features .icon { color: var(--success); flex-shrink: 0; }
+
+/* Settings */
+.danger-zone { box-shadow: var(--edge), 0 0 0 1px var(--danger-soft); }
+
+@media (max-width: 1279px) and (min-width: 768px) {
+  .notice-slot { padding-inline: var(--s-6); }
+}
+@media (max-width: 767px) {
+  .notice-slot { padding: var(--s-3) var(--s-4) 0; }
+  .bill-grid, .bill-plans { grid-template-columns: minmax(0, 1fr); }
+}
+.cfg-section .form-error:empty { display: none; } /* reserve no space until there is an error */

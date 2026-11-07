@@ -98,6 +98,12 @@ function bidiText(text) {
 const faNumber = (n) => Number(n).toLocaleString('fa-IR');
 const toman = (n) => `${faNumber(n)} تومان`;
 
+/** A paid-until moment (midnight after the last paid day) -> that last day, e.g. «۳۰ آذر ۱۴۰۵». */
+function faLastDay(sqliteDate) {
+  const date = new Date(Date.parse(`${sqliteDate.replace(' ', 'T')}Z`) - 1000);
+  return date.toLocaleDateString('fa-IR', { dateStyle: 'medium', timeZone: 'Asia/Tehran' });
+}
+
 /** SQLite "YYYY-MM-DD HH:MM:SS" (UTC) -> Persian (Solar Hijri) date and time. */
 function faDate(sqliteDate) {
   const date = new Date(`${sqliteDate.replace(' ', 'T')}Z`);

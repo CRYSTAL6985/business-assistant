@@ -27,7 +27,7 @@ export const NAV = [
 ];
 export const SECTION_LABELS = Object.fromEntries(NAV.flatMap((g) => g.items.map((i) => [i.id, i.label])));
 const PLAN_LABELS = { free: 'پلن رایگان', pro: 'پلن حرفه‌ای' };
-const THEMES = [
+export const THEMES = [
   { id: 'system', label: 'مطابق سیستم', icon: 'monitor' },
   { id: 'dark', label: 'تیره', icon: 'moon' },
   { id: 'light', label: 'روشن', icon: 'sun' },
@@ -35,10 +35,10 @@ const THEMES = [
 const USAGE_WARN = 0.8;
 const fa = (n) => Number(n).toLocaleString('fa-IR');
 
-function savedTheme() {
+export function savedTheme() {
   try { return localStorage.getItem('theme') || 'dark'; } catch { return 'dark'; }
 }
-function setTheme(theme) {
+export function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try { localStorage.setItem('theme', theme); } catch { /* storage blocked: theme lasts for this page only */ }
 }
@@ -167,4 +167,10 @@ export function renderShell(me) {
   renderSidebar(me, route);
   const toggle = el('button', { class: 'round-btn menu-toggle', type: 'button', 'aria-label': 'باز کردن منو', 'aria-controls': 'sidebar', onclick: () => setDrawer(true) }, icon('menu'));
   document.getElementById('topbar').replaceChildren(toggle, storeSwitcher(me, route), searchBox(me), bell(me), themeButton(), profile(me));
+  // Suspension is the operator's decision; the owner must see it on every page, with what it means.
+  document.getElementById('notice').replaceChildren(me.workspace.status === 'suspended'
+    ? el('div', { class: 'notice-danger', role: 'alert' }, icon('alert', 'icon icon-sm'),
+      el('span', { text: 'این فضای کاری توسط مدیر سامانه معلق شده؛ دستیارها به مشتری‌ها پاسخ نمی‌دهند. ' }),
+      el('a', { href: href('/app/billing'), 'data-link': '', text: 'جزئیات' }))
+    : '');
 }

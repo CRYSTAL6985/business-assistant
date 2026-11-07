@@ -159,6 +159,7 @@ function activityRow(item, showStore) {
     'order.created': { title: 'سفارش جدید', sub: item.summary ? `از ${item.summary}` : '', pill: 'pill-accent', label: 'سفارش', to: '/app/orders' },
     'order.status': { title: `سفارش #${fa(item.refId, { useGrouping: false })}`, sub: `وضعیت: ${ORDER_STATUS[item.summary] ?? item.summary}`, pill: '', label: 'وضعیت', to: '/app/orders' },
     'conversation.started': { title: 'گفتگوی جدید', sub: 'مشتری گفتگو را شروع کرد', pill: '', label: 'گفتگو', to: '/app/conversations' },
+    'conversation.takeover': { title: 'واگذاری به انسان', sub: 'گفتگو از دستیار به شما سپرده شد', pill: '', label: 'گفتگو', to: '/app/conversations' },
   };
   const kind = kinds[item.type] ?? { title: item.type, sub: item.summary, pill: '', label: '', to: '/app' };
   return el('li', {}, el('a', { class: 'row-link', href: href(kind.to, { store: item.storeId }), 'data-link': '' },

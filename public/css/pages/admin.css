@@ -1,0 +1,20 @@
+/* Operator panel: a top bar instead of the sidebar, tables, a detail dialog. */
+.admin-bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; padding: var(--s-3) var(--s-8);
+  background: var(--header-glass); backdrop-filter: blur(16px); border-bottom: 1px solid var(--sep); }
+.admin-bar .brand { margin: 0; }
+.admin-bar #logout { margin-inline-start: auto; }
+.admin-page { max-width: 1200px; margin-inline: auto; width: 100%; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; text-align: start; }
+.link-btn:hover { color: var(--accent-soft-ink); text-decoration: underline; }
+.admin-dialog { width: min(640px, calc(100vw - 32px)); }
+.admin-dialog h2 { margin: 0; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-4); margin: 0; }
+.facts dt { color: var(--ink-3); font-size: var(--t-sm); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.admin-actions { flex-wrap: wrap; }
+.danger-text { color: var(--danger); }
+
+@media (max-width: 767px) {
+  .admin-bar { padding: var(--s-3) var(--s-4); }
+  .admin-bar .seg { order: 3; width: 100%; }
+}

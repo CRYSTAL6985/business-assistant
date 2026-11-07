@@ -3,7 +3,6 @@ import { get } from './api.js';
 import { currentRoute, onRoute } from './router.js';
 import { renderShell, SECTION_LABELS } from './shell.js';
 import * as overview from './pages/overview.js';
-import * as later from './pages/later.js';
 import * as products from './pages/products.js';
 import * as knowledge from './pages/knowledge.js';
 import * as orders from './pages/orders.js';
@@ -11,8 +10,11 @@ import * as stores from './pages/stores.js';
 import * as conversations from './pages/conversations.js';
 import * as assistant from './pages/assistant.js';
 import * as integrations from './pages/integrations.js';
+import * as analytics from './pages/analytics.js';
+import * as billing from './pages/billing.js';
+import * as settings from './pages/settings.js';
 
-const PAGES = { overview, products, knowledge, orders, stores, conversations, assistant, integrations };
+const PAGES = { overview, products, knowledge, orders, stores, conversations, assistant, integrations, analytics, billing, settings };
 const main = document.getElementById('main');
 let me = null;
 
@@ -25,7 +27,7 @@ export async function refreshMe() {
 
 async function show(route, { focus = true } = {}) {
   renderShell(me);
-  const page = PAGES[route.section] ?? (SECTION_LABELS[route.section] ? later : null);
+  const page = PAGES[route.section] ?? null;
   const storeId = Number(route.params.get('store')) || null;
   document.title = `${SECTION_LABELS[route.section] ?? 'صفحه پیدا نشد'} · دستیار هوشمند`;
   main.setAttribute('aria-busy', 'true');
