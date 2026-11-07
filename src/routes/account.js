@@ -73,17 +73,18 @@ function accountRoutes(db) {
       if (!email) return res.status(400).json({ error: 'ایمیل معتبر نیست' });
       if (limiter.isLocked(email)) return res.status(429).json({ error: 'تلاش‌های ناموفق زیاد بود. ۱۵ دقیقه دیگر امتحان کنید.' });
 
-      const row = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email);
+      const row = db.prepare('SELECT id, password_hash, is_operator FROM users WHERE email = ?').get(email);
       const ok = row ? await auth.verifyPassword(password, row.password_hash) : false;
       if (!ok) {
         limiter.fail(email);
         return res.status(401).json({ error: 'ایمیل یا رمز عبور اشتباه است' }); // same message either way: don't reveal which emails exist
       }
       limiter.succeed(email);
-      const workspaceId = firstWorkspaceId(db, row.id);
-      if (!workspaceId) return res.status(403).json({ error: 'این حساب به هیچ فضای کاری متصل نیست' });
+      const workspaceId = firstWorkspaceId(db, row.id) ?? null;
+      if (!workspaceId && !row.is_operator) return res.status(403).json({ error: 'این حساب به هیچ فضای کاری متصل نیست' });
       auth.setSessionCookie(res, auth.createSession(db, row.id, workspaceId));
-      res.json({ ok: true });
+      // The operator has no shop of their own: the login page sends them to /admin.
+      res.json({ ok: true, operator: Boolean(row.is_operator), hasWorkspace: Boolean(workspaceId) });
     } catch (err) {
       next(err);
     }

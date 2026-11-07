@@ -7,6 +7,7 @@ const MIGRATIONS = [
   require('./004-sync-columns'),
   require('./005-inbox'),
   require('./006-integrations'),
+  require('./007-payments-operator'),
 ];
 
 /**

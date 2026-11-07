@@ -16,6 +16,8 @@ const { createOutbound } = require('./outbound');
 const { startScheduler } = require('./scheduler');
 const { webhookRoutes } = require('./routes/webhooks');
 const { publicApiRoutes } = require('./routes/publicApi');
+const { adminRoutes } = require('./routes/admin');
+const { ensureOperator } = require('./auth');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const DEFAULT_PORT = 3000;
@@ -37,13 +39,14 @@ function securityHeaders(req, res, next) {
  *   allowPrivateUrls?: boolean,  development / tests only: let integrations call local addresses
  *   publicBaseUrl?: string,      where shops reach us (webhook delivery URL)
  *   retryDelays?: number[],      sync / webhook backoff — tests pass zeros
+ *   supportContact?: string,     how owners reach the operator to upgrade (SUPPORT_CONTACT)
  * }} deps
  */
-function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, allowPrivateUrls = false, publicBaseUrl = `http://localhost:${DEFAULT_PORT}`, retryDelays }) {
+function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, allowPrivateUrls = false, publicBaseUrl = `http://localhost:${DEFAULT_PORT}`, retryDelays, supportContact = '' }) {
   const cipher = createCipher(secretKey);
   const queue = createSyncQueue({ db, cipher, fetch: doFetch, ...(retryDelays ? { retryDelays } : {}) });
   const outbound = createOutbound({ db, cipher, fetch: doFetch, allowPrivate: allowPrivateUrls, ...(retryDelays ? { delays: [0, ...retryDelays] } : {}) });
-  const services = { db, cipher, queue, outbound, fetch: doFetch, allowPrivate: allowPrivateUrls, publicBaseUrl: publicBaseUrl.replace(/\/+$/, '') };
+  const services = { db, cipher, queue, outbound, fetch: doFetch, allowPrivate: allowPrivateUrls, publicBaseUrl: publicBaseUrl.replace(/\/+$/, ''), supportContact };
 
   const app = express();
   app.disable('x-powered-by');
@@ -57,6 +60,7 @@ function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, al
   app.use('/api/app', appRoutes(db, ask, services));
   app.use('/api/chat', chatRoutes(db, ask, { outbound }));
   app.use('/api/v1', publicApiRoutes(services));
+  app.use('/api/admin', adminRoutes(db));
 
   app.get('/chat/:slug', (req, res) => {
     const store = findStore(db, String(req.params.slug));
@@ -66,6 +70,7 @@ function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, al
   });
   app.get('/panel', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'panel.html')));
   app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'app.html')));
+  app.get(['/admin', '/admin/*'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
   app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
   app.use(express.static(PUBLIC_DIR));
 
@@ -98,6 +103,7 @@ function configFromEnv(env) {
     secretKey: env.SECRET_KEY || DEV_SECRET,
     publicBaseUrl: env.PUBLIC_BASE_URL || `http://localhost:${port}`,
     allowPrivateUrls: !production,
+    supportContact: env.SUPPORT_CONTACT || '',
   };
 }
 
@@ -107,6 +113,9 @@ if (require.main === module) {
   const ask = aiFromEnv(process.env);
   const app = createApp({ db, ask, ...config });
   startScheduler(app.locals.services);
+  ensureOperator(db, process.env.OPERATOR_EMAIL, process.env.OPERATOR_PASSWORD)
+    .then((created) => created && console.info(`[server] operator account ready: ${process.env.OPERATOR_EMAIL}`))
+    .catch((err) => console.error('[server] could not create the operator account:', err));
   app.listen(config.port, () => {
     console.info(`Assistant running on http://localhost:${config.port}  (AI: ${ask ? process.env.AI_MODEL : 'offline mode'})`);
   });

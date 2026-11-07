@@ -46,20 +46,48 @@ function setSessionCookie(res, token) {
   res.cookie(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', maxAge: SESSION_MS });
 }
 
-/** Express middleware: rejects the request unless it carries a valid session; sets req.userId and req.workspaceId. */
+/** The request's live session (expired ones are removed), or null. */
+function sessionOf(db, req) {
+  const token = readCookie(req, SESSION_COOKIE);
+  const row = token && db.prepare(`SELECT s.user_id, s.active_workspace_id, s.expires_at, u.is_operator
+    FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`).get(token);
+  if (!row) return null;
+  if (row.expires_at < Date.now()) { deleteSession(db, token); return null; }
+  return { token, userId: row.user_id, workspaceId: row.active_workspace_id, isOperator: Boolean(row.is_operator) };
+}
+
+/** Express middleware for the owner panel: a valid session with a workspace; sets req.userId and req.workspaceId. */
 function requireUser(db) {
   return (req, res, next) => {
-    const token = readCookie(req, SESSION_COOKIE);
-    const row = token && db.prepare('SELECT user_id, active_workspace_id, expires_at FROM sessions WHERE token = ?').get(token);
-    if (!row || row.expires_at < Date.now()) {
-      if (row) deleteSession(db, token);
-      return res.status(401).json({ error: 'ابتدا وارد شوید' });
-    }
-    req.userId = row.user_id;
-    req.workspaceId = row.active_workspace_id;
-    req.sessionToken = token;
+    const session = sessionOf(db, req);
+    if (!session) return res.status(401).json({ error: 'ابتدا وارد شوید' });
+    if (!session.workspaceId) return res.status(403).json({ error: 'این حساب فروشگاهی ندارد', operator: session.isOperator });
+    req.userId = session.userId;
+    req.workspaceId = session.workspaceId;
+    req.sessionToken = session.token;
     next();
   };
+}
+
+/** Express middleware for /api/admin: only users marked is_operator. */
+function requireOperator(db) {
+  return (req, res, next) => {
+    const session = sessionOf(db, req);
+    if (!session) return res.status(401).json({ error: 'ابتدا وارد شوید' });
+    if (!session.isOperator) return res.status(403).json({ error: 'دسترسی ندارید' });
+    req.userId = session.userId;
+    next();
+  };
+}
+
+/** Creates the first operator account from env when none exists (startup). */
+async function ensureOperator(db, email, password) {
+  if (!email || !password) return false;
+  if (db.prepare('SELECT 1 FROM users WHERE is_operator = 1').get()) return false;
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  if (existing) db.prepare('UPDATE users SET is_operator = 1 WHERE id = ?').run(existing.id);
+  else db.prepare("INSERT INTO users (email, password_hash, name, is_operator) VALUES (?, ?, 'اپراتور', 1)").run(email.toLowerCase(), await hashPassword(password));
+  return true;
 }
 
 /**
@@ -94,5 +122,8 @@ module.exports = {
   readCookie,
   setSessionCookie,
   requireUser,
+  requireOperator,
+  ensureOperator,
+  sessionOf,
   createLoginLimiter,
 };

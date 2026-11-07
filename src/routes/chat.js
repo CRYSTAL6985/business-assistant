@@ -15,6 +15,7 @@ const HISTORY_REDRAW_LIMIT = 100;
 const MAX_MESSAGE_LENGTH = 1000;
 const LIMIT_REACHED_REPLY = 'دستیار این فروشگاه فعلاً در دسترس نیست. لطفاً مستقیم با فروشگاه تماس بگیرید.';
 const HUMAN_NOTICE = 'یکی از همکاران ما به‌زودی پاسخ می‌دهد.';
+const UNAVAILABLE_REPLY = 'دستیار این فروشگاه در حال حاضر در دسترس نیست. لطفاً مستقیم با فروشگاه تماس بگیرید.';
 const DEFAULT_COLOR = '#2f6fe4';
 const NOT_FOUND = { error: 'کسب‌وکار پیدا نشد' };
 const FOREIGN = { error: 'این دستیار برای این سایت فعال نیست' };
@@ -35,7 +36,7 @@ function findStore(db, slug) {
 }
 
 function workspaceOf(db, store) {
-  return db.prepare('SELECT id, plan, paid_until FROM workspaces WHERE id = ?').get(store.workspace_id);
+  return db.prepare('SELECT id, plan, paid_until, status FROM workspaces WHERE id = ?').get(store.workspace_id);
 }
 
 /** Reuses the customer's conversation if it belongs to this store, otherwise starts a new one. */
@@ -192,7 +193,13 @@ function chatRoutes(db, ask, { outbound = null } = {}) {
         saveCustomerMessage(db, conversation.id, message);
         return res.json({ conversationId: conversation.id, reply: null, source: 'human', notice: HUMAN_NOTICE, orderId: null });
       }
-      if (usageFor(db, workspaceOf(db, store)).reached) {
+      const workspace = workspaceOf(db, store);
+      if (workspace.status !== 'active') {
+        // Suspended by the operator: a neutral line, no AI, nothing counted. The message is kept for the owner.
+        saveCustomerMessage(db, conversation.id, message);
+        return res.json({ conversationId: conversation.id, reply: UNAVAILABLE_REPLY, source: 'unavailable', orderId: null });
+      }
+      if (usageFor(db, workspace).reached) {
         saveCustomerMessage(db, conversation.id, message);
         return res.json({ conversationId: conversation.id, reply: LIMIT_REACHED_REPLY, source: 'limit', orderId: null });
       }
