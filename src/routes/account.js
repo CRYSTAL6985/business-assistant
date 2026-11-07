@@ -2,25 +2,22 @@
 const express = require('express');
 const auth = require('../auth');
 const validate = require('../validate');
+const { insertStore, DEFAULT_TONE } = require('../stores');
 
 const MIN_PASSWORD = 8;
 const SQLITE_CONSTRAINT_UNIQUE = 2067;
-const DEFAULT_TONE = 'دوستانه و محترمانه';
 
 /**
  * Creates user + workspace + owner membership + first store + assistant config in one transaction.
  * @returns {{ userId: number, workspaceId: number, storeId: number }}
  */
 function createAccount(db, { name, slug, email, passwordHash, description = '', tone = DEFAULT_TONE, plan = 'free' }) {
-  const config = JSON.stringify({ description, tone });
   db.exec('BEGIN');
   try {
     const userId = Number(db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)').run(email, passwordHash, name).lastInsertRowid);
     const workspaceId = Number(db.prepare('INSERT INTO workspaces (name, plan) VALUES (?, ?)').run(name, plan).lastInsertRowid);
     db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").run(workspaceId, userId);
-    const storeId = Number(db.prepare('INSERT INTO stores (workspace_id, slug, name) VALUES (?, ?, ?)').run(workspaceId, slug, name).lastInsertRowid);
-    db.prepare("INSERT INTO assistant_configs (store_id, draft_json, published_json, published_at) VALUES (?, ?, ?, datetime('now'))")
-      .run(storeId, config, config);
+    const storeId = insertStore(db, { workspaceId, slug, name, description, tone });
     db.exec('COMMIT');
     return { userId, workspaceId, storeId };
   } catch (err) {

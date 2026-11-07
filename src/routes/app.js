@@ -8,12 +8,15 @@ const { resolveRange } = require('../time');
 const overview = require('../overview');
 const attention = require('../attention');
 const validate = require('../validate');
+const { storeRoutes } = require('./app/stores');
 
 const ACTIVITY_TYPES = ['order', 'conversation'];
 
 function appRoutes(db) {
   const router = express.Router();
   router.use(requireUser(db));
+
+  router.use('/stores', storeRoutes(db));
 
   const workspaceOf = (req) => db.prepare('SELECT id, name, plan, paid_until FROM workspaces WHERE id = ?').get(req.workspaceId);
 
