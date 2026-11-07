@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <title>دستیار هوشمند کسب‌وکار</title>
+  <script>
+    // Apply the saved theme before first paint so there is no flash of the wrong theme.
+    try { document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark'; } catch { /* storage blocked: keep dark */ }
+  </script>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/shell.css">
+  <link rel="stylesheet" href="/css/pages/overview.css">
+  <script src="/ui.js"></script>
+  <script type="module" src="/js/app/main.js"></script>
+</head>
+<body>
+  <a class="btn skip-link" href="#main">رفتن به محتوا</a>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="منوی اصلی"></aside>
+    <div class="main-col">
+      <header class="topbar" id="topbar"></header>
+      <main class="page" id="main" tabindex="-1" aria-live="polite" aria-busy="true"></main>
+    </div>
+  </div>
+</body>
+</html>

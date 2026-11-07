@@ -95,4 +95,16 @@ function activity(db, storeIds, { type, before, limit = DEFAULT_ACTIVITY_LIMIT }
   return { items, nextBefore: rows.length > size ? items.at(-1).id : null };
 }
 
-module.exports = { metrics, storeSummaries, activity };
+/** Badge counts for the sidebar: orders still 'new', conversations whose last message is the customer's. */
+function counts(db, storeIds) {
+  if (!storeIds.length) return { newOrders: 0, unanswered: 0 };
+  const { newOrders } = db.prepare(`SELECT COUNT(*) AS newOrders FROM orders WHERE store_id IN (${marks(storeIds)}) AND status = 'new'`).get(...storeIds);
+  const { unanswered } = db.prepare(`
+    SELECT COUNT(*) AS unanswered FROM conversations c
+    JOIN messages last ON last.id = (SELECT MAX(id) FROM messages WHERE conversation_id = c.id)
+    WHERE c.store_id IN (${marks(storeIds)}) AND last.role = 'user'
+  `).get(...storeIds);
+  return { newOrders, unanswered };
+}
+
+module.exports = { metrics, storeSummaries, activity, counts };

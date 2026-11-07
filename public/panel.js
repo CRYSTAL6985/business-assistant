@@ -89,8 +89,8 @@ function wireAuth() {
     slug.value = slug.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     $('#slug-preview').textContent = slug.value ? `${location.origin}/chat/${slug.value}` : '';
   });
-  handleForm($('#login-form'), async (f) => { await api('POST', '/api/auth/login', f); await enterApp(); });
-  handleForm($('#register-form'), async (f) => { await api('POST', '/api/auth/register', f); await enterApp(); toast('حساب ساخته شد. خوش آمدید!'); });
+  handleForm($('#login-form'), async (f) => { await api('POST', '/api/auth/login', f); afterLogin(); });
+  handleForm($('#register-form'), async (f) => { await api('POST', '/api/auth/register', f); afterLogin('حساب ساخته شد. خوش آمدید!'); });
 }
 
 /* ---------- data ---------- */
@@ -100,6 +100,13 @@ async function refresh() {
   renderOverview();
   renderProducts();
   renderFaqs();
+}
+
+/** Logged in: go to the new panel (/app) unless ?next=panel asks for this classic panel. */
+async function afterLogin(welcome) {
+  if (new URLSearchParams(location.search).get('next') !== 'panel') return location.assign('/app');
+  await enterApp();
+  if (welcome) toast(welcome);
 }
 
 async function enterApp() {

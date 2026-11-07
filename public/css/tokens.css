@@ -1,0 +1,115 @@
+/* ============================================================
+   Design tokens. Components only ever use these variables, so the two themes are
+   defined here and nowhere else. Dark is the default; light is designed separately
+   (warm paper surfaces), not an inversion.
+   ============================================================ */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/vazirmatn.woff2") format("woff2-variations"), url("/fonts/vazirmatn.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #09090b;
+  --sidebar: #0d0d10;
+  --surface: #141417;
+  --surface-hi: #1a1a1e;
+  --raised: #202024;           /* menus, popovers, segmented thumb */
+  --fill: rgba(255, 255, 255, 0.055);
+  --fill-strong: rgba(255, 255, 255, 0.09);
+  --sep: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.1);
+  --ink: #f2f2f4;
+  --ink-2: #a1a1aa;
+  --ink-3: #7c7c85;            /* ≥4.5:1 on --surface */
+  --accent: #5b8cf5;
+  --accent-hover: #6f9bf7;
+  --accent-ink: #06080d;
+  --accent-soft: rgba(91, 140, 245, 0.14);
+  --accent-soft-ink: #9bb8ff;
+  --success: #3fb68b;
+  --success-soft: rgba(63, 182, 139, 0.13);
+  --warn: #e8aa4e;
+  --warn-soft: rgba(232, 170, 78, 0.13);
+  --danger: #e3685f;
+  --danger-soft: rgba(227, 104, 95, 0.13);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --header-glass: rgba(9, 9, 11, 0.72);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);   /* light catching the top edge */
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  --lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+
+  --font: "Vazirmatn", system-ui, Tahoma, sans-serif;
+  --t-xs: 0.75rem;   /* 12 */
+  --t-sm: 0.8125rem; /* 13 */
+  --t-md: 0.875rem;  /* 14 body */
+  --t-lg: 1rem;
+  --t-xl: 1.25rem;   /* section titles */
+  --t-2xl: 1.75rem;  /* metric values */
+  --t-3xl: 2rem;     /* page title */
+
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);  /* critically damped feel */
+  --dur-press: 100ms;
+  --dur-fast: 160ms;
+  --dur: 260ms;
+
+  --sidebar-w: 240px;
+  --header-h: 60px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --sidebar: #efede8;
+  --surface: #ffffff;
+  --surface-hi: #fbfaf8;
+  --raised: #ffffff;
+  --fill: rgba(24, 24, 27, 0.05);
+  --fill-strong: rgba(24, 24, 27, 0.08);
+  --sep: rgba(24, 24, 27, 0.08);
+  --border: rgba(24, 24, 27, 0.12);
+  --ink: #18181b;
+  --ink-2: #52525b;
+  --ink-3: #6b6b74;
+  --accent: #2f6fe4;
+  --accent-hover: #255fcb;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(47, 111, 228, 0.1);
+  --accent-soft-ink: #1f56bd;
+  --success: #12875f;
+  --success-soft: rgba(18, 135, 95, 0.1);
+  --warn: #a8620a;
+  --warn-soft: rgba(196, 122, 18, 0.12);
+  --danger: #c2392f;
+  --danger-soft: rgba(194, 57, 47, 0.1);
+  --scrim: rgba(24, 24, 27, 0.35);
+  --header-glass: rgba(246, 245, 242, 0.78);
+  --edge: 0 0 0 1px rgba(24, 24, 27, 0.06);
+  --shadow-pop: 0 1px 2px rgba(24, 24, 27, 0.06), 0 16px 40px -12px rgba(24, 24, 27, 0.22);
+  --lift: 0 0 0 1px rgba(24, 24, 27, 0.06), 0 8px 24px -14px rgba(24, 24, 27, 0.25);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --bg: #f6f5f2; --sidebar: #efede8; --surface: #ffffff; --surface-hi: #fbfaf8; --raised: #ffffff;
+    --fill: rgba(24, 24, 27, 0.05); --fill-strong: rgba(24, 24, 27, 0.08); --sep: rgba(24, 24, 27, 0.08); --border: rgba(24, 24, 27, 0.12);
+    --ink: #18181b; --ink-2: #52525b; --ink-3: #6b6b74;
+    --accent: #2f6fe4; --accent-hover: #255fcb; --accent-ink: #ffffff; --accent-soft: rgba(47, 111, 228, 0.1); --accent-soft-ink: #1f56bd;
+    --success: #12875f; --success-soft: rgba(18, 135, 95, 0.1); --warn: #a8620a; --warn-soft: rgba(196, 122, 18, 0.12);
+    --danger: #c2392f; --danger-soft: rgba(194, 57, 47, 0.1); --scrim: rgba(24, 24, 27, 0.35); --header-glass: rgba(246, 245, 242, 0.78);
+    --edge: 0 0 0 1px rgba(24, 24, 27, 0.06);
+    --shadow-pop: 0 1px 2px rgba(24, 24, 27, 0.06), 0 16px 40px -12px rgba(24, 24, 27, 0.22);
+    --lift: 0 0 0 1px rgba(24, 24, 27, 0.06), 0 8px 24px -14px rgba(24, 24, 27, 0.25);
+  }
+}

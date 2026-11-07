@@ -43,6 +43,19 @@ test('me lists only own stores and the plan usage', async (t) => {
   assert.equal(me.user.email, 'me-a@t.ir');
   assert.equal(me.usage.limit, 100);
   assert.equal(me.workspace.plan, 'free');
+  assert.deepEqual(me.counts, { newOrders: 0, unanswered: 0 });
+  assert.deepEqual(me.attention, []);
+});
+
+test('me counts new orders and unanswered conversations of own stores', async (t) => {
+  const { db, register } = await setup(t);
+  const a = await register('cnt-a');
+  const store = db.prepare("SELECT id FROM stores WHERE slug = 'cnt-a'").get().id;
+  db.prepare(`INSERT INTO orders (store_id, customer_name, phone, address, items_json, total) VALUES (?, 'C', '09120000000', 'Tehran 1', '[]', 1)`).run(store);
+  db.prepare("INSERT INTO conversations (id, store_id) VALUES ('u1', ?)").run(store);
+  db.prepare("INSERT INTO messages (conversation_id, role, content) VALUES ('u1', 'user', 'hello?')").run();
+  const me = (await a('GET', '/api/app/me')).body;
+  assert.deepEqual(me.counts, { newOrders: 1, unanswered: 1 });
 });
 
 test('overview with another workspace\'s store id is 404', async (t) => {

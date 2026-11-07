@@ -27,11 +27,14 @@ function appRoutes(db) {
   router.get('/me', (req, res) => {
     const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(req.userId);
     const workspace = workspaceOf(req);
+    const stores = workspaceStores(db, req.workspaceId);
     res.json({
       user,
       workspace: { id: workspace.id, name: workspace.name, plan: workspace.plan, paidUntil: workspace.paid_until },
       usage: usageFor(db, workspace),
-      stores: workspaceStores(db, req.workspaceId).map(({ id, name, slug, domain, platform }) => ({ id, name, slug, domain, platform })),
+      stores: stores.map(({ id, name, slug, domain, platform }) => ({ id, name, slug, domain, platform })),
+      counts: overview.counts(db, stores.map((s) => s.id)),
+      attention: attention.items(db, workspace, stores),
     });
   });
 
