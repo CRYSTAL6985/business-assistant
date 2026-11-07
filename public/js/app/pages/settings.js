@@ -9,8 +9,8 @@ function inlineForm({ fields, submitLabel, onSubmit }) {
   const error = el('p', { class: 'form-error', role: 'alert' });
   const submit = el('button', { class: 'btn btn-secondary', type: 'submit', text: submitLabel });
   const form = el('form', { class: 'stack', novalidate: true }, ...fields.map((f) => el('div', { class: 'field' },
-    el('label', { for: `s-${f.name}`, text: f.label }),
-    el('input', { class: `input${f.ltr ? ' ltr' : ''}`, id: `s-${f.name}`, name: f.name, type: f.type ?? 'text', value: f.value ?? '', required: true,
+    el('label', { for: `s-${f.id ?? f.name}`, text: f.label }),
+    el('input', { class: `input${f.ltr ? ' ltr' : ''}`, id: `s-${f.id ?? f.name}`, name: f.name, type: f.type ?? 'text', value: f.value ?? '', required: true,
       minlength: f.minlength ?? null, maxlength: f.maxlength ?? null, autocomplete: f.autocomplete ?? 'off', readOnly: f.readOnly ?? false }),
     f.hint ? el('span', { class: 'hint', text: f.hint }) : null)), error, el('div', { class: 'page-actions' }, submit));
   form.addEventListener('submit', (e) => {
@@ -56,7 +56,7 @@ export async function render(main, { refreshMe }) {
   }));
 
   const workspace = card('فضای کاری', null, inlineForm({
-    fields: [{ name: 'name', label: 'نام فضای کاری', value: s.workspace.name, minlength: 2, maxlength: 80 }],
+    fields: [{ name: 'name', id: 'workspace-name', label: 'نام فضای کاری', value: s.workspace.name, minlength: 2, maxlength: 80 }],
     submitLabel: 'ذخیره', onSubmit: async (v) => { await api('PUT', '/api/app/settings/workspace', v); s.workspace.name = v.name; toast('ذخیره شد'); await refreshMe(); },
   }));
 

@@ -26,6 +26,8 @@ function createSyncQueue({ db, cipher, fetch: doFetch = fetch, retryDelays = RET
     return wooClient({ siteUrl: integration.site_url, key, secret, fetch: doFetch });
   }
 
+  // shortcut: syncs add and update but never delete; deletions arrive only by webhook. Compare the full
+  // id list on a full run if shops report items lingering after a missed delete webhook.
   async function importAll(storeId, client, factor, cursor, counts) {
     const add = (r) => { counts.created += r.created; counts.updated += r.updated; };
     const since = cursor ? { modified_after: isoOf(cursor) } : {};
