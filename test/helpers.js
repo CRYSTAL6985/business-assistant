@@ -5,7 +5,7 @@ const { createApp } = require('../src/server');
 
 async function startApp(t, { ask = null, fetch: doFetch } = {}) {
   const db = openDb(':memory:');
-  const app = createApp({ db, ask, allowPrivateUrls: true, retryDelays: [0, 0], ...(doFetch ? { fetch: doFetch } : {}) });
+  const app = createApp({ db, ask, allowPrivateUrls: true, retryDelays: [0, 0], rateLimits: false, ...(doFetch ? { fetch: doFetch } : {}) });
   const server = app.listen(0);
   await new Promise((r) => server.once('listening', r));
   t.after(() => server.close());

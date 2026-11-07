@@ -8,6 +8,7 @@ const MIGRATIONS = [
   require('./005-inbox'),
   require('./006-integrations'),
   require('./007-payments-operator'),
+  require('./008-order-conversation-index'),
 ];
 
 /**

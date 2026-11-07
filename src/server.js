@@ -18,17 +18,18 @@ const { webhookRoutes } = require('./routes/webhooks');
 const { publicApiRoutes } = require('./routes/publicApi');
 const { adminRoutes } = require('./routes/admin');
 const { ensureOperator } = require('./auth');
+const { securityHeaders, sameOriginWrites, csp } = require('./security');
+const { rateLimit } = require('./ratelimit');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const DEFAULT_PORT = 3000;
 
-function securityHeaders(req, res, next) {
-  res.set('X-Content-Type-Options', 'nosniff');
-  res.set('Referrer-Policy', 'same-origin');
-  // The chat page is meant to be embedded on shop websites; everything else must not be framed.
-  if (!req.path.startsWith('/chat/')) res.set('Content-Security-Policy', "frame-ancestors 'self'");
-  next();
-}
+// Per client IP. Generous for people, tight for scripts guessing passwords or flooding the AI.
+const LIMITS = {
+  login: { capacity: 10, perMinute: 10 },
+  register: { capacity: 5, perMinute: 2 },
+  chat: { capacity: 20, perMinute: 30 },
+};
 
 /**
  * @param {{
@@ -40,9 +41,11 @@ function securityHeaders(req, res, next) {
  *   publicBaseUrl?: string,      where shops reach us (webhook delivery URL)
  *   retryDelays?: number[],      sync / webhook backoff — tests pass zeros
  *   supportContact?: string,     how owners reach the operator to upgrade (SUPPORT_CONTACT)
+ *   production?: boolean,        HSTS, trust the platform's proxy for client IPs
+ *   rateLimits?: boolean,        per-IP limits on login, sign-up and chat (tests of other features turn them off)
  * }} deps
  */
-function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, allowPrivateUrls = false, publicBaseUrl = `http://localhost:${DEFAULT_PORT}`, retryDelays, supportContact = '' }) {
+function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, allowPrivateUrls = false, publicBaseUrl = `http://localhost:${DEFAULT_PORT}`, retryDelays, supportContact = '', production = false, rateLimits = true }) {
   const cipher = createCipher(secretKey);
   const queue = createSyncQueue({ db, cipher, fetch: doFetch, ...(retryDelays ? { retryDelays } : {}) });
   const outbound = createOutbound({ db, cipher, fetch: doFetch, allowPrivate: allowPrivateUrls, ...(retryDelays ? { delays: [0, ...retryDelays] } : {}) });
@@ -51,9 +54,16 @@ function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, al
   const app = express();
   app.disable('x-powered-by');
   app.locals.services = services;
-  app.use(securityHeaders);
+  if (production) app.set('trust proxy', 1); // behind the platform's reverse proxy: req.ip = the real client
+  app.use(securityHeaders({ production }));
   app.use('/api/webhooks', webhookRoutes(services)); // before express.json: signatures cover the raw body
   app.use(express.json({ limit: '50kb' }));
+  for (const prefix of ['/api/auth', '/api/panel', '/api/app', '/api/admin']) app.use(prefix, sameOriginWrites(services));
+  if (rateLimits) {
+    app.use('/api/auth/login', rateLimit(LIMITS.login));
+    app.use('/api/auth/register', rateLimit(LIMITS.register));
+    app.post('/api/chat/:slug', rateLimit(LIMITS.chat));
+  }
 
   app.use('/api/auth', accountRoutes(db));
   app.use('/api/panel', panelRoutes(db));
@@ -65,7 +75,7 @@ function createApp({ db, ask, secretKey = DEV_SECRET, fetch: doFetch = fetch, al
   app.get('/chat/:slug', (req, res) => {
     const store = findStore(db, String(req.params.slug));
     // Embeddable only on the store's own site (any site while the store has no domain set).
-    res.set('Content-Security-Policy', store ? frameAncestors(store) : "frame-ancestors 'self'");
+    res.set('Content-Security-Policy', csp(store ? frameAncestors(store) : "frame-ancestors 'self'"));
     res.sendFile(path.join(PUBLIC_DIR, 'chat.html'));
   });
   app.get('/panel', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'panel.html')));
@@ -103,6 +113,7 @@ function configFromEnv(env) {
     secretKey: env.SECRET_KEY || DEV_SECRET,
     publicBaseUrl: env.PUBLIC_BASE_URL || `http://localhost:${port}`,
     allowPrivateUrls: !production,
+    production,
     supportContact: env.SUPPORT_CONTACT || '',
   };
 }
