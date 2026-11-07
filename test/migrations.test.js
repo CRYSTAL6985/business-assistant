@@ -80,3 +80,25 @@ test('old sessions are dropped', () => {
   migrate(db);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 0);
 });
+
+test('rollback works even where db.isTransaction is unavailable (Node < 22.16)', () => {
+  const real = new DatabaseSync(':memory:');
+  const db = new Proxy(real, { get: (target, key) => (key === 'isTransaction' ? undefined : target[key].bind?.(target) ?? target[key]) });
+  const bad = { version: 1, name: 'bad', up: (d) => { d.exec('CREATE TABLE b (x)'); throw new Error('boom'); } };
+  assert.throws(() => migrate(db, { migrations: [bad] }), /boom/);
+  assert.ok(!tableExists(real, 'b'));
+  assert.equal(real.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+});
+
+test('migration keeps id counters so old order numbers are never reused', () => {
+  const db = v1Database();
+  db.prepare(`INSERT INTO orders (id, business_id, customer_name, phone, address, items_json, total)
+              VALUES (5, 7, 'Ali', '09120000001', 'Tehran 2', '[]', 1)`).run();
+  db.prepare('DELETE FROM orders WHERE id = 5').run(); // counter stays at 5, highest remaining id is 1
+  migrate(db);
+  const { lastInsertRowid } = db.prepare(`INSERT INTO orders (store_id, customer_name, phone, address, items_json, total)
+                                         VALUES (7, 'New', '09120000002', 'Tehran 3', '[]', 1)`).run();
+  assert.equal(Number(lastInsertRowid), 6);
+  const store = db.prepare(`INSERT INTO stores (workspace_id, slug, name) VALUES (7, 'second', 'S')`).run();
+  assert.ok(Number(store.lastInsertRowid) > 7);
+});

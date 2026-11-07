@@ -4,6 +4,7 @@ const auth = require('../auth');
 const validate = require('../validate');
 
 const MIN_PASSWORD = 8;
+const SQLITE_CONSTRAINT_UNIQUE = 2067;
 const DEFAULT_TONE = 'دوستانه و محترمانه';
 
 /**
@@ -52,7 +53,15 @@ function accountRoutes(db) {
       if (taken) return res.status(409).json({ error: 'این ایمیل یا آدرس صفحه قبلاً ثبت شده' });
 
       const passwordHash = await auth.hashPassword(password);
-      const { userId, workspaceId } = createAccount(db, { name, slug, email, passwordHash });
+      let account;
+      try {
+        account = createAccount(db, { name, slug, email, passwordHash });
+      } catch (err) {
+        // Another sign-up with the same email/slug finished while this one was hashing its password.
+        if (err.errcode === SQLITE_CONSTRAINT_UNIQUE) return res.status(409).json({ error: 'این ایمیل یا آدرس صفحه قبلاً ثبت شده' });
+        throw err;
+      }
+      const { userId, workspaceId } = account;
       auth.setSessionCookie(res, auth.createSession(db, userId, workspaceId));
       res.status(201).json({ ok: true });
     } catch (err) {

@@ -24,15 +24,17 @@ function migrate(db, { to = Infinity, migrations = MIGRATIONS } = {}) {
   for (const migration of pending) {
     // Table rebuilds need foreign keys off, and the pragma can't change inside a transaction.
     db.exec('PRAGMA foreign_keys = OFF');
+    let began = false; // own flag instead of db.isTransaction, which only exists from Node 22.16
     try {
       db.exec('BEGIN');
+      began = true;
       migration.up(db);
       db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)').run(migration.version, migration.name);
       const broken = db.prepare('PRAGMA foreign_key_check').all();
       if (broken.length) throw new Error(`migration ${migration.version} left ${broken.length} broken foreign keys`);
       db.exec('COMMIT');
     } catch (err) {
-      if (db.isTransaction) db.exec('ROLLBACK');
+      if (began) db.exec('ROLLBACK');
       throw err;
     } finally {
       db.exec('PRAGMA foreign_keys = ON');

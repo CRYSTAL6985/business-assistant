@@ -130,13 +130,37 @@ CREATE INDEX idx_stores_workspace ON stores(workspace_id);
 CREATE INDEX idx_members_user ON workspace_members(user_id);
 `;
 
+/**
+ * Rebuilding a table resets its AUTOINCREMENT counter to the highest id still present, which would
+ * hand out ids of deleted rows again (a customer could get an order number someone already had).
+ * Restore each counter to at least its old value.
+ */
+function restoreCounters(db, saved) {
+  const counters = {
+    products: saved.products, faqs: saved.faqs, orders: saved.orders,
+    users: saved.businesses, workspaces: saved.businesses, stores: saved.businesses,
+  };
+  const update = db.prepare('UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = ?');
+  const insert = db.prepare('INSERT INTO sqlite_sequence (name, seq) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = ?)');
+  for (const [table, seq] of Object.entries(counters)) {
+    if (!seq) continue;
+    update.run(seq, table);
+    insert.run(table, seq, table);
+  }
+}
+
 module.exports = {
   version: 2,
   name: 'workspaces',
   up(db) {
+    const hasSequence = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'sqlite_sequence'").get();
+    const saved = hasSequence
+      ? Object.fromEntries(db.prepare('SELECT name, seq FROM sqlite_sequence').all().map((r) => [r.name, r.seq]))
+      : {};
     db.exec(NEW_TABLES);
     db.exec(COPY_ACCOUNTS);
     db.exec(REBUILD_CHILDREN);
     db.exec(SESSIONS_AND_CLEANUP);
+    restoreCounters(db, saved);
   },
 };

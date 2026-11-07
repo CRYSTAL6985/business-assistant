@@ -179,3 +179,11 @@ test('duplicate slug or email returns 409', async (t) => {
   const sameEmail = await call('POST', '/api/auth/register', { name: 'Fresh Shop', slug: 'fresh-shop', email: 'dupe-shop@test.ir', password: 'password123' });
   assert.equal(sameEmail.status, 409);
 });
+
+test('two simultaneous sign-ups with the same email: one 201, one 409', async (t) => {
+  const { server, base } = await startServer(null);
+  t.after(() => server.close());
+  const body = (slug) => ({ name: 'Race Shop', slug, email: 'race@test.ir', password: 'password123' });
+  const results = await Promise.all([client(base)('POST', '/api/auth/register', body('race-one')), client(base)('POST', '/api/auth/register', body('race-two'))]);
+  assert.deepEqual(results.map((r) => r.status).sort(), [201, 409]);
+});
