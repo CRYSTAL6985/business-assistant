@@ -11,6 +11,7 @@ const validate = require('../validate');
 const { storeRoutes } = require('./app/stores');
 const { productRoutes } = require('./app/products');
 const { faqRoutes } = require('./app/faqs');
+const { orderRoutes } = require('./app/orders');
 
 const ACTIVITY_TYPES = ['order', 'conversation'];
 
@@ -21,6 +22,7 @@ function appRoutes(db) {
   router.use('/stores', storeRoutes(db));
   router.use('/products', productRoutes(db));
   router.use('/faqs', faqRoutes(db));
+  router.use('/orders', orderRoutes(db));
 
   const workspaceOf = (req) => db.prepare('SELECT id, name, plan, paid_until FROM workspaces WHERE id = ?').get(req.workspaceId);
 
